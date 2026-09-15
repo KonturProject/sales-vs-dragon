@@ -5,7 +5,8 @@
 ## Верхний уровень
 
 ```
-claude first pr/                        <- корень (git-репозиторий, НИЧЕГО ещё не закоммичено)
+claude first pr/                        <- корень (git-репозиторий, задеплоен на GitHub: KonturProject/svin-i-zagon)
+├── CLAUDE.md                            инструкции для Claude Code (команды, архитектура, гочи) — читается автоматически
 ├── ROP.jpg                              исходный референс-арт (фотореалистичный, больше не используется в игре)
 ├── docs/                                вся документация проекта
 │   ├── gameplan.md                      текущее описание/статус (этот файл — сосед)
@@ -16,9 +17,9 @@ claude first pr/                        <- корень (git-репозитор�
 │   ├── appsscript.json
 │   └── README.md                        инструкция по ручному деплою
 ├── game/                                Vite+Phaser+TS проект — вся игра
-├── .claude/skills/                      установленные скиллы game-creator, caveman и др. (см. память/предыдущие обсуждения)
-├── .agents/skills/                      установленные скиллы caveman (дубликат для другого раннера)
-└── skills-lock.json                     служебный файл установщика скиллов
+├── .claude/skills/                      установленные скиллы game-creator, caveman и др. (см. память/предыдущие обсуждения) — исключены из git
+├── .agents/skills/                      установленные скиллы caveman (дубликат для другого раннера) — исключены из git
+└── skills-lock.json                     служебный файл установщика скиллов — исключён из git
 ```
 
 ## `game/` — фронтенд (Phaser 4 + Vite + TS)
@@ -49,8 +50,8 @@ game/
 │       │   ├── PenScene.ts              ГЛАВНАЯ сцена: тableau героев+свина+загона, дорога, камеры, мерцающий фон, оркестрация PIG_REACHED_PEN
 │       │   └── HUDScene.ts              параллельная сцена: прогресс-бар (одометр), индикатор связи, mute-кнопка, Leaderboard, конфетти/виньетка/цвет.вспышки
 │       ├── objects/
-│       │   ├── HeroSprite.ts            Container(glow-ghost + sprite); playHit()/playCheer()/playCelebrate()/playVictory()/resetPose(), idle-эмоции
-│       │   ├── Pig.ts                   Container(glow-ghost + sprite) + speech bubble; setProgress() (само-сброс celebrated), reactToHit(), celebrate()
+│       │   ├── HeroSprite.ts            Container(sprite); playHit()/playCheer()/playCelebrate()/playVictory()/resetPose(), idle-эмоции (без glow/тени — убраны по просьбе пользователя)
+│       │   ├── Pig.ts                   Container(sprite) + speech bubble; setProgress() (само-сброс celebrated), reactToHit(), celebrate()
 │       │   ├── Leaderboard.ts           живой пересортируемый мини-рейтинг 6 отделов (Container)
 │       │   └── RoadLayer.ts             длинная "дорога" (3200px, параллакс scrollFactor на bg/sky) — маркеры дистанции, свин-маркер, только для RoadCamera
 │       ├── systems/
@@ -68,11 +69,11 @@ game/
 ├── assets-source/                       ИСХОДНИКИ ассетов, не публикуются в игру напрямую
 │   └── raw-pixel/                       второй набор арта от пользователя + очищенные (`clean_*.png`) версии
 ├── vite/config.{dev,prod}.mjs           prod-конфиг собирает ДВЕ точки входа (index.html + admin.html)
-├── package.json                         scripts: dev, build, dev-nolog, build-nolog (deploy-скрипт для gh-pages ЕЩЁ НЕ добавлен)
+├── package.json                         scripts: dev, build, dev-nolog, build-nolog, deploy (gh-pages)
 └── tsconfig.json
 ```
 
-### Спрайты в `public/assets/sprites/` (все пиксель-арт, второй набор от пользователя)
+### Спрайты в `public/assets/sprites/` (все пиксель-арт; базовые модели героинь/Валькирии — последний раунд правок от пользователя: обрезаны вручную в Photoshop, `assets-source/raw-pixel/clean_*.png` → скопированы как есть)
 
 | Файл | Использование |
 |---|---|
@@ -101,12 +102,14 @@ game/
 ## Статус деплоя игры
 
 - Локальная разработка: `npm run dev` (или `dev-nolog`) из `game/`, либо `.claude/launch.json` → preview "sales-game-dev" (порт 8080).
-- **GitHub Pages ещё НЕ настроен** — ни `gh-pages` в devDependencies, ни deploy-скрипт в `package.json`, ни публичный GitHub-репозиторий не созданы. Это осознанно отложено: требует явного разрешения пользователя (создание публичного репо + push).
-- Git-репозиторий локально инициализирован (`git init` уже выполнен), но **ни одного коммита нет** — всё в рабочей директории как untracked/uncommitted.
+- **Задеплоено на GitHub Pages.** Репозиторий: https://github.com/KonturProject/svin-i-zagon (публичный). Игра: https://konturproject.github.io/svin-i-zagon/. Админка: https://konturproject.github.io/svin-i-zagon/admin.html.
+- `game/package.json` → `npm run deploy` = `npm run build-nolog && gh-pages -d dist` (пакет `gh-pages` в devDependencies). Vite `base: './'` — все пути в собранном `index.html`/`admin.html` относительные, поэтому GitHub Pages под-путь (`/svin-i-zagon/`) не требует отдельной настройки base.
+- GitHub Pages включился автоматически при первом пуше в ветку `gh-pages` (source: `gh-pages` branch, path `/`) — проверять/менять через `gh api repos/KonturProject/svin-i-zagon/pages`.
+- Авторизация: `gh auth status` под аккаунтом `KonturProject` (GitHub CLI установлен через winget). Повторный деплой после новых изменений — просто `npm run deploy` из `game/`.
+- Корневой `.gitignore` исключает `node_modules`, `dist`, а также `.claude/`, `.agents/`, `skills-lock.json` (инструментарий Claude Code, не часть игры).
 
 ## Что дальше (открытые пункты на момент этой карты)
 
 1. Реальный пиксельный `pen.png` от пользователя (пока процедурный).
 2. Подтвердить точный формат кода отдела в самой таблице (регистр/пробелы у "СР1" и т.д.) — если удар не анимируется, смотреть сюда первым делом.
 3. Решить, нужны ли `hero_boss_flying_happy/sad`, `pig_ko` — либо подключить в новую механику, либо оставить как резерв.
-4. Git commit + GitHub Pages деплой — ждёт явного "да" от пользователя.
