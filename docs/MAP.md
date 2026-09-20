@@ -102,7 +102,7 @@ game/
 ## Статус деплоя игры
 
 - Локальная разработка: `npm run dev` (или `dev-nolog`) из `game/`, либо `.claude/launch.json` → preview "sales-game-dev" (порт 8080).
-- **Задеплоено на GitHub Pages** (репозиторий https://github.com/KonturProject/svin-i-zagon, публичный). Игра: https://konturproject.github.io/svin-i-zagon/. Админка: https://konturproject.github.io/svin-i-zagon/admin.html. **Опубликована ещё версия «свин в загон»** — версия с драконом попадёт на сайт после `npm run deploy`.
+- **Задеплоено на GitHub Pages** (репозиторий https://github.com/KonturProject/svin-i-zagon, публичный). Игра: https://konturproject.github.io/svin-i-zagon/. Админка: https://konturproject.github.io/svin-i-zagon/admin.html. **Опубликована версия с драконом** (деплой 2026-09-20, коммит `aba4f65`).
 - `game/package.json` → `npm run deploy` = `npm run build-nolog && gh-pages -d dist` (пакет `gh-pages` в devDependencies). Vite `base: './'` — пути в собранном HTML относительные, под-путь Pages не требует настройки.
 - GitHub Pages включился автоматически при первом пуше в ветку `gh-pages` (source: `gh-pages` branch, path `/`) — проверять через `gh api repos/KonturProject/svin-i-zagon/pages`.
 - Авторизация: `gh auth status` под аккаунтом `KonturProject` (GitHub CLI установлен через winget).
