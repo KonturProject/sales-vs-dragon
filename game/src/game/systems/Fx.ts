@@ -1,4 +1,5 @@
 import { GameObjects, Scene } from 'phaser';
+import { GAME } from '../core/Constants';
 
 /** Tweened-circle particle burst — no particle plugin needed. */
 export function emitBurst(scene: Scene, x: number, y: number, color: number, count = 10) {
@@ -44,12 +45,12 @@ const CONFETTI_COLORS = [0x2fd0e0, 0x36e08a, 0xffe89a, 0xff6688, 0xc9a227];
 /** Full-screen falling confetti burst for the weekly-goal finale. */
 export function emitConfettiBurst(scene: Scene, count = 120) {
     for (let i = 0; i < count; i++) {
-        const x = Math.random() * scene.scale.width;
+        const x = Math.random() * GAME.WIDTH;
         const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
         const piece = scene.add.rectangle(x, -10, 6, 10, color, 1).setAngle(Math.random() * 360);
         scene.tweens.add({
             targets: piece,
-            y: scene.scale.height + 20,
+            y: GAME.HEIGHT + 20,
             angle: piece.angle + (Math.random() > 0.5 ? 360 : -360),
             x: x + (Math.random() - 0.5) * 120,
             duration: 1800 + Math.random() * 1200,
@@ -62,7 +63,7 @@ export function emitConfettiBurst(scene: Scene, count = 120) {
 
 /** Brief full-screen color pulse(s) — used for both the goal-finale vignette and per-hit color flashes. */
 export function flashScreen(scene: Scene, color: number, alpha: number, duration: number, pulses = 1) {
-    const rect = scene.add.rectangle(scene.scale.width / 2, scene.scale.height / 2, scene.scale.width, scene.scale.height, color, 0)
+    const rect = scene.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT / 2, GAME.WIDTH, GAME.HEIGHT, color, 0)
         .setDepth(2000);
     scene.tweens.add({
         targets: rect,
@@ -91,12 +92,13 @@ export function emitShockwaveRing(scene: Scene, x: number, y: number, color: num
 
 const ONOMATOPOEIA = ['БАМ!', 'ХРЯСЬ!', 'БАХ!', 'ХЛОП!'];
 
-/** Comic-book impact text, styled like the pig's existing speech-bubble aesthetic. Reserved for bigger sales — see FX.COMIC_TEXT_MIN_DELTA. */
+/** Comic-book impact text, Reserved for bigger sales — see FX.COMIC_TEXT_MIN_DELTA. */
 export function emitComicText(scene: Scene, x: number, y: number): GameObjects.Text {
     const text = ONOMATOPOEIA[Math.floor(Math.random() * ONOMATOPOEIA.length)];
     const t = scene.add.text(x, y, text, {
         fontFamily: 'Arial Black, Arial, sans-serif',
         fontSize: '26px',
+        resolution: GAME.RENDER_SCALE,
         fontStyle: 'bold',
         color: '#fff5f5',
     }).setOrigin(0.5).setAngle(-8).setStroke('#d23a3a', 5);
@@ -118,6 +120,7 @@ export function emitFloatingAmount(scene: Scene, x: number, y: number, amount: n
     const t = scene.add.text(x, y, `+${Math.round(amount).toLocaleString('ru-RU')} ₽`, {
         fontFamily: 'Arial Black, Arial, sans-serif',
         fontSize: '18px',
+        resolution: GAME.RENDER_SCALE,
         color: '#36e08a',
     }).setOrigin(0.5).setDepth(1500).setShadow(0, 1, '#000000', 3, false, true);
     scene.tweens.add({
@@ -133,18 +136,25 @@ export function emitFloatingAmount(scene: Scene, x: number, y: number, amount: n
     return t;
 }
 
-/** Subtle idle bob so static art doesn't read as a frozen photo. */
-export function addIdleBob(scene: Scene, target: { y: number }, amplitude = 4, duration = 1400, delay = 0) {
-    const baseY = target.y;
-    scene.tweens.add({
-        targets: target,
-        y: baseY - amplitude,
-        duration,
-        delay,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
+/**
+ * Rare idle sway so standing art doesn't read as a frozen photo: a small tilt
+ * about the feet every 20–30 s. Only `angle` changes — the feet never leave the
+ * floor (an up/down bob was removed because the characters looked like they hovered).
+ */
+export function addIdleSway(scene: Scene, target: { angle: number }, canPlay: () => boolean = () => true) {
+    const schedule = () => scene.time.delayedCall(20000 + Math.random() * 10000, () => {
+        if (canPlay()) {
+            scene.tweens.chain({
+                targets: target,
+                tweens: [
+                    { angle: -6, duration: 140, ease: 'Quad.easeOut' },
+                    { angle: 0, duration: 260, ease: 'Sine.easeOut' },
+                ],
+            });
+        }
+        schedule();
     });
+    schedule();
 }
 
 /** Slow, narrow-range alpha drift — reads as ambient life (neon flicker, twinkling stars) without being distracting on an always-on display. */
@@ -159,4 +169,29 @@ export function addIdleFlicker(scene: Scene, target: { alpha: number }, minAlpha
         repeat: -1,
         ease: 'Sine.easeInOut',
     });
+}
+
+/** Gold coins flung out of the dragon's hoard toward the attacker — "winning the gold back". Gravity-arc tween, no particle plugin. */
+export function emitCoinBurst(scene: Scene, x: number, y: number, count = 8, towardLeft = true) {
+    const dir = towardLeft ? -1 : 1;
+    for (let i = 0; i < count; i++) {
+        const coin = scene.add.circle(x, y, 3 + Math.random() * 2, 0xf5c518, 1).setStrokeStyle(1, 0xb8860b, 1).setDepth(900);
+        const duration = 520 + Math.random() * 260;
+        const fall = 70 + Math.random() * 40;
+        const peak = 50 + Math.random() * 60;
+        scene.tweens.add({
+            targets: coin,
+            x: x + dir * (50 + Math.random() * 130),
+            duration,
+            ease: 'Quad.easeOut',
+        });
+        // Rise to `peak` then fall `fall` below the start: vertical offset = fall*t - peak*4t(1-t).
+        scene.tweens.add({
+            targets: coin,
+            y: y + fall,
+            duration,
+            ease: (t: number) => t - (peak / fall) * 4 * t * (1 - t),
+            onComplete: () => coin.destroy(),
+        });
+    }
 }

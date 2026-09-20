@@ -1,7 +1,8 @@
 import { Display, GameObjects, Scene } from 'phaser';
-import { EventBus, GameEvents, ProgressChangedPayload, FetchErrorPayload, PigReachedPenPayload, MoneyInPayload } from '../core/EventBus';
+import { EventBus, GameEvents, ProgressChangedPayload, FetchErrorPayload, DragonHeadLostPayload, DragonDefeatedPayload, MoneyInPayload } from '../core/EventBus';
 import { GameState } from '../core/GameState';
-import { GAME, HUD, HeroSlug, POLL } from '../core/Constants';
+import { fitCameraToGame } from '../core/Render';
+import { DAYS, DRAGON, GAME, HUD, HeroSlug, POLL } from '../core/Constants';
 import { emitConfettiBurst, flashScreen } from '../systems/Fx';
 import { RosterConfig } from '../systems/RosterConfig';
 import { Leaderboard } from '../objects/Leaderboard';
@@ -24,6 +25,8 @@ export class HUDScene extends Scene {
     private fill!: GameObjects.Graphics;
     private label!: GameObjects.Text;
     private title!: GameObjects.Text;
+    private headsText!: GameObjects.Text;
+    private banner: GameObjects.Container | null = null;
     private statusDot!: GameObjects.Arc;
     private statusText!: GameObjects.Text;
     private muteIcon!: GameObjects.Text;
@@ -39,36 +42,51 @@ export class HUDScene extends Scene {
     }
 
     create() {
-        this.title = this.add.text(GAME.WIDTH / 2, 4, 'НЕДЕЛЬНЫЙ ПЛАН ПРОДАЖ', {
+        fitCameraToGame(this);
+
+        this.title = this.add.text(GAME.WIDTH / 2, 4, 'НЕДЕЛЬНЫЙ ПЛАН — ОТДЕЛЫ ПРОТИВ ДРАКОНА', {
             fontFamily: 'Arial Black, Arial, sans-serif',
-            fontSize: '11px',
+            fontSize: '13px',
+            resolution: GAME.RENDER_SCALE,
             color: '#8fb8d9',
-        }).setOrigin(0.5, 0).setAlpha(0.85);
+        }).setOrigin(0.5, 0).setAlpha(0.9);
         this.title.setLetterSpacing?.(2);
 
         this.track = this.add.graphics();
         this.drawTrack();
 
         this.fill = this.add.graphics();
+        this.drawDayMarks();
+
+        this.headsText = this.add.text(GAME.WIDTH - 32, BAR_Y + BAR_HEIGHT + 24, '', {
+            fontFamily: 'Arial Black, Arial, sans-serif',
+            fontSize: '16px',
+            resolution: GAME.RENDER_SCALE,
+            color: '#ff9a7a',
+        }).setOrigin(1, 0).setShadow(0, 1, '#000000', 3, false, true);
+        this.renderHeads(GameState.headsRemaining);
 
         this.label = this.add.text(BAR_X + BAR_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, '', {
             fontFamily: 'Arial Black, Arial, sans-serif',
-            fontSize: '15px',
+            fontSize: '18px',
+            resolution: GAME.RENDER_SCALE,
             color: '#ffffff',
         }).setOrigin(0.5).setShadow(0, 1, '#000000', 3, false, true);
 
         this.statusText = this.add.text(STATUS_X - 12, STATUS_Y, '', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '10px',
+            fontSize: '12px',
+            resolution: GAME.RENDER_SCALE,
             color: '#8fb8d9',
-        }).setOrigin(1, 0.5).setAlpha(0.85);
+        }).setOrigin(1, 0.5).setAlpha(0.9);
         this.statusDot = this.add.circle(STATUS_X, STATUS_Y, 4, 0x36e08a);
         this.renderStatus();
 
         this.muteIcon = this.add.text(MUTE_X, MUTE_Y, '', {
             fontFamily: 'Arial, sans-serif',
-            fontSize: '14px',
-        }).setOrigin(0.5).setAlpha(0.85).setInteractive({ useHandCursor: true });
+            fontSize: '16px',
+            resolution: GAME.RENDER_SCALE,
+        }).setOrigin(0.5).setAlpha(0.9).setInteractive({ useHandCursor: true });
         this.renderMuteIcon();
         this.muteIcon.on('pointerdown', () => {
             AudioSystem.init();
@@ -102,13 +120,15 @@ export class HUDScene extends Scene {
             callback: () => this.renderStatus(),
         });
 
-        const onPigReachedPen = (payload: PigReachedPenPayload) => {
-            this.time.delayedCall(payload.delayMs, () => {
+        const onDragonDefeated = (payload: DragonDefeatedPayload) => {
+            this.time.delayedCall(payload.delayMs + DRAGON.HEAD_LOSS_DURATION_MS, () => {
+                if (!GameState.dragonDefeated) return; // ratio dropped back while we were waiting
                 emitConfettiBurst(this, 120);
                 flashScreen(this, 0xffe89a, 0.35, 220, 3);
+                this.showVictoryBanner();
             });
         };
-        EventBus.on(GameEvents.PIG_REACHED_PEN, onPigReachedPen);
+        EventBus.on(GameEvents.DRAGON_DEFEATED, onDragonDefeated);
 
         // Brief full-screen tint in the scoring department's color — reads as
         // "who just sold" even out of the corner of your eye across a room.
@@ -118,31 +138,34 @@ export class HUDScene extends Scene {
         };
         EventBus.on(GameEvents.MONEY_IN, onMoneyIn);
 
-        // Smaller flourish at the 25/50/75% quartiles — a quick confetti burst
-        // and a bright pulse right on the bar itself — keeps the screen alive
-        // throughout the week, not just at the 100% finale.
-        const onMilestoneReached = () => {
-            emitConfettiBurst(this, 30);
-            const pulse = this.add.rectangle(
-                BAR_X + BAR_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, BAR_WIDTH, BAR_HEIGHT, 0xffffff, 0
-            );
-            this.tweens.add({
-                targets: pulse,
-                alpha: 0.5,
-                duration: 150,
-                yoyo: true,
-                onComplete: () => pulse.destroy(),
+        // Each lost head is a daily plan cleared — a quick confetti burst and a
+        // bright pulse right on the bar (the final head also gets the full victory).
+        const onHeadLost = (payload: DragonHeadLostPayload) => {
+            this.time.delayedCall(payload.delayMs, () => {
+                if (payload.heads < GameState.headsRemaining) return; // stale: the ratio dropped back meanwhile
+                this.renderHeads(payload.heads);
+                emitConfettiBurst(this, 30);
+                const pulse = this.add.rectangle(
+                    BAR_X + BAR_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, BAR_WIDTH, BAR_HEIGHT, 0xffffff, 0
+                );
+                this.tweens.add({
+                    targets: pulse,
+                    alpha: 0.5,
+                    duration: 150,
+                    yoyo: true,
+                    onComplete: () => pulse.destroy(),
+                });
             });
         };
-        EventBus.on(GameEvents.MILESTONE_REACHED, onMilestoneReached);
+        EventBus.on(GameEvents.DRAGON_HEAD_LOST, onHeadLost);
 
         this.events.once('shutdown', () => {
             EventBus.off(GameEvents.PROGRESS_CHANGED, handler);
             EventBus.off(GameEvents.DATA_UPDATED, onDataUpdated);
             EventBus.off(GameEvents.FETCH_ERROR, onFetchError);
-            EventBus.off(GameEvents.PIG_REACHED_PEN, onPigReachedPen);
+            EventBus.off(GameEvents.DRAGON_DEFEATED, onDragonDefeated);
             EventBus.off(GameEvents.MONEY_IN, onMoneyIn);
-            EventBus.off(GameEvents.MILESTONE_REACHED, onMilestoneReached);
+            EventBus.off(GameEvents.DRAGON_HEAD_LOST, onHeadLost);
             statusTimer.remove();
         });
     }
@@ -175,6 +198,12 @@ export class HUDScene extends Scene {
     private render(payload: ProgressChangedPayload) {
         const target = Math.min(1, Math.max(0, payload.ratio));
 
+        // Regrown heads (new week / raised plan) show immediately; lost heads
+        // are shown by the delayed head-loss handler so the counter matches the art.
+        if (!this.hasBaseline || payload.headsRemaining > this.shownHeads) this.renderHeads(payload.headsRemaining);
+        this.hasBaseline = true;
+        if (payload.ratio < 1) this.hideVictoryBanner();
+
         this.tweens.add({
             targets: this,
             displayedRatio: target,
@@ -193,6 +222,66 @@ export class HUDScene extends Scene {
             ease: 'Sine.easeOut',
             onUpdate: () => this.drawLabel(),
         });
+    }
+
+    private shownHeads = DAYS;
+    private hasBaseline = false;
+
+    private renderHeads(heads: number) {
+        this.shownHeads = heads;
+        this.headsText.setText(heads > 0 ? `ГОЛОВ У ДРАКОНА: ${heads} / ${DAYS}` : 'ДРАКОН ПОБЕЖДЁН');
+    }
+
+    /** Day dividers on the weekly bar — each one is a daily plan (weekly plan / DAYS). */
+    private drawDayMarks() {
+        const g = this.add.graphics();
+        g.lineStyle(2, 0x8fb8d9, 0.55);
+        for (let d = 1; d <= DAYS; d++) {
+            const x = BAR_X + (BAR_WIDTH * d) / DAYS;
+            if (d < DAYS) g.lineBetween(x, BAR_Y + 3, x, BAR_Y + BAR_HEIGHT - 3);
+            this.add.text(x - 6, BAR_Y + BAR_HEIGHT + 5, `день ${d}`, {
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '12px',
+                resolution: GAME.RENDER_SCALE,
+                color: '#8fb8d9',
+            }).setOrigin(1, 0).setAlpha(0.9);
+        }
+    }
+
+    private showVictoryBanner() {
+        if (this.banner) return;
+        // Upper-left of the cave: the empty wall between the leaderboard and the dragon,
+        // so the banner never covers the dragon or the heroes.
+        const cx = 495;
+        const cy = 215;
+        const panel = this.add.graphics();
+        panel.fillStyle(0x0d1220, 0.88);
+        panel.fillRoundedRect(-290, -62, 580, 124, 18);
+        panel.lineStyle(4, 0xc9a227, 1);
+        panel.strokeRoundedRect(-290, -62, 580, 124, 18);
+        const title = this.add.text(0, -20, 'ОТДЕЛЫ ПОБЕДИЛИ ДРАКОНА!', {
+            fontFamily: 'Arial Black, Arial, sans-serif',
+            fontSize: '29px',
+            resolution: GAME.RENDER_SCALE,
+            color: '#ffe89a',
+        }).setOrigin(0.5).setStroke('#7a4a00', 6);
+        const sub = this.add.text(0, 28, 'План недели выполнен', {
+            fontFamily: 'Arial Black, Arial, sans-serif',
+            fontSize: '22px',
+            resolution: GAME.RENDER_SCALE,
+            color: '#ffffff',
+        }).setOrigin(0.5).setShadow(0, 2, '#000000', 4, false, true);
+        this.banner = this.add.container(cx, cy, [panel, title, sub]).setDepth(3000).setAlpha(0).setScale(0.6);
+        this.tweens.add({ targets: this.banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut' });
+        this.tweens.add({ targets: this.banner, scale: 1.03, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 500 });
+    }
+
+    private hideVictoryBanner() {
+        if (!this.banner) return;
+        const b = this.banner;
+        this.banner = null;
+        this.tweens.killTweensOf(b);
+        this.tweens.add({ targets: b, alpha: 0, duration: 300, onComplete: () => b.destroy() });
     }
 
     private drawLabel() {

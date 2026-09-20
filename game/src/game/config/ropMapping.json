@@ -1,11 +1,11 @@
 {
-    "_comment": "Real department codes -> heroRoster.json slug. hero_boss_flying (Валькирия) is intentionally unmapped — she's the branch lead/motivator, not tied to a single department's sales, so she never gets a hit animation from money-in events. Verify the exact ROP column text matches these codes exactly (case/spacing) against the real sheet.",
+    "_comment": "Real department codes -> heroRoster.json slug. lead_cruella (branch head) is intentionally unmapped — she isn't tied to one department's sales, so she never gets a hit animation from money-in events. Verify the exact ROP column text matches these codes exactly (case/spacing) against the real sheet.",
     "mapping": {
-        "СР1": "hero_red",
-        "СР2": "hero_green",
-        "СР3": "hero_yellow",
-        "СР5": "hero_black",
-        "СР6": "hero_purple",
-        "СР9": "hero_blue"
+        "СР1": "hero_lion",
+        "СР2": "hero_scrooge",
+        "СР3": "hero_grinch",
+        "СР5": "hero_yoda",
+        "СР6": "hero_neznaika",
+        "СР9": "hero_minion"
     }
 }

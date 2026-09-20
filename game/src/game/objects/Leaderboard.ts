@@ -1,9 +1,9 @@
 import { Display, GameObjects, Scene } from 'phaser';
-import { HeroSlug } from '../core/Constants';
+import { GAME, HeroSlug } from '../core/Constants';
 import { RosterConfig } from '../systems/RosterConfig';
 
 const ROW_HEIGHT = 22;
-const PANEL_WIDTH = 150;
+const PANEL_WIDTH = 184;
 const PANEL_PADDING = 6;
 
 interface Row {
@@ -18,7 +18,7 @@ export class Leaderboard extends GameObjects.Container {
     constructor(scene: Scene, x: number, y: number) {
         super(scene, x, y);
 
-        const groundHeroes = RosterConfig.heroes.filter(h => !h.flying);
+        const groundHeroes = RosterConfig.heroes.filter(h => !h.lead);
 
         const panel = scene.add.graphics();
         panel.fillStyle(0x0d1220, 0.8);
@@ -34,12 +34,14 @@ export class Leaderboard extends GameObjects.Container {
             const swatch = scene.add.circle(14, ROW_HEIGHT / 2, 6, color);
             const label = scene.add.text(26, ROW_HEIGHT / 2, RosterConfig.ropNameForSlug(def.slug) ?? def.slug, {
                 fontFamily: 'Arial, sans-serif',
-                fontSize: '11px',
+                fontSize: '13px',
+                resolution: GAME.RENDER_SCALE,
                 color: '#cfe3f5',
             }).setOrigin(0, 0.5);
             const amountText = scene.add.text(PANEL_WIDTH - 10, ROW_HEIGHT / 2, '0 ₽', {
                 fontFamily: 'Arial Black, Arial, sans-serif',
-                fontSize: '11px',
+                fontSize: '13px',
+                resolution: GAME.RENDER_SCALE,
                 color: '#ffffff',
             }).setOrigin(1, 0.5);
 

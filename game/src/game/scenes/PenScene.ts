@@ -1,23 +1,29 @@
-import { GameObjects, Scene } from 'phaser';
-import { EventBus, GameEvents, MoneyInPayload, ProgressChangedPayload, PigReachedPenPayload } from '../core/EventBus';
+import { Scene } from 'phaser';
+import {
+    EventBus, GameEvents, MoneyInPayload, ProgressChangedPayload, DragonHeadLostPayload, DragonDefeatedPayload,
+} from '../core/EventBus';
 import { GameState } from '../core/GameState';
-import { GAME, HERO, HUD, PEN } from '../core/Constants';
+import { fitCameraToGame } from '../core/Render';
+import { DRAGON, GAME, HERO, HUD } from '../core/Constants';
 import { RosterConfig, HeroDef } from '../systems/RosterConfig';
 import { DataPollingService } from '../systems/DataPollingService';
-import { Pig } from '../objects/Pig';
+import { Dragon } from '../objects/Dragon';
 import { HeroSprite } from '../objects/HeroSprite';
-import { RoadLayer } from '../objects/RoadLayer';
-import { RoadCamera } from '../systems/RoadCamera';
-import { emitFloatingAmount, addIdleFlicker } from '../systems/Fx';
+import { LeadSprite } from '../objects/LeadSprite';
+import { emitFloatingAmount } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 
+/**
+ * The tableau: department heroes on the left, the dragon on its gold mountain
+ * on the right, the branch lead standing apart. Reacts to game events only —
+ * decisions about *what* happens (which hero hit, how many heads are left) are
+ * made upstream in DataPollingService / GameState.
+ */
 export class PenScene extends Scene {
-    private pig!: Pig;
+    private dragon!: Dragon;
     private heroes = new Map<string, HeroSprite>();
-    private flyingHeroSlug: string | null = null;
-    private roadCamera!: RoadCamera;
+    private lead: LeadSprite | null = null;
     private hasAppliedFirstProgress = false;
-    private lastRatio = 0;
     private hasPlayedVictory = false;
 
     constructor() {
@@ -25,143 +31,112 @@ export class PenScene extends Scene {
     }
 
     create() {
+        fitCameraToGame(this);
         this.cameras.main.setBackgroundColor('#08090f');
 
-        const tableauObjects: GameObjects.GameObject[] = [];
+        // Cave picture, built to exactly the canvas size by tools/build-sprites.py.
+        this.add.image(GAME.WIDTH / 2, GAME.HEIGHT / 2, 'bg_cave').setDisplaySize(GAME.WIDTH, GAME.HEIGHT).setDepth(-10);
 
-        tableauObjects.push(
-            this.add.image(GAME.WIDTH / 2, GAME.HEIGHT / 2, 'bg_city')
-                .setDisplaySize(GAME.WIDTH, GAME.HEIGHT)
-        );
-        this.addAmbientBackground(tableauObjects);
+        this.dragon = new Dragon(this);
 
-        tableauObjects.push(
-            this.add.image(PEN.X, PEN.Y, 'pen').setDisplaySize(PEN.DISPLAY_WIDTH, PEN.DISPLAY_HEIGHT)
-        );
-
-        this.pig = new Pig(this);
-        tableauObjects.push(this.pig);
-
-        const ground = RosterConfig.heroes.filter((h: HeroDef) => !h.flying);
-        const flying = RosterConfig.heroes.filter((h: HeroDef) => h.flying);
-
-        const onImpactFx = (objs: GameObjects.GameObject[]) => this.roadCamera.ignore(objs);
-
-        ground.forEach((def: HeroDef, i: number) => {
-            const x = HERO.GROUND_START_X + i * HERO.GROUND_SPACING;
-            const hero = new HeroSprite(this, x, HERO.GROUND_Y, def, onImpactFx);
+        // Depth follows the feet's y so the front row draws over the back row.
+        const fighters = RosterConfig.heroes.filter((h: HeroDef) => !h.lead);
+        fighters.forEach((def: HeroDef, i: number) => {
+            const slot = HERO.SLOTS[i];
+            const hero = new HeroSprite(this, slot.x, slot.y, def, slot.scale);
+            hero.setDepth(slot.y);
             this.heroes.set(def.slug, hero);
-            tableauObjects.push(hero);
         });
 
-        flying.forEach((def: HeroDef) => {
-            const hero = new HeroSprite(this, HERO.FLYING_X, HERO.FLYING_Y, def, onImpactFx);
-            this.heroes.set(def.slug, hero);
-            this.flyingHeroSlug = def.slug;
-            tableauObjects.push(hero);
-        });
-
-        const road = new RoadLayer(this);
-        this.roadCamera = new RoadCamera(this, road);
-        this.roadCamera.setup(this.cameras.main, tableauObjects);
+        const leadDef = RosterConfig.heroes.find((h: HeroDef) => h.lead);
+        if (leadDef) {
+            this.lead = new LeadSprite(this, HERO.LEAD.x, HERO.LEAD.y, leadDef.sprite, HERO.LEAD.scale);
+            this.lead.setDepth(HERO.LEAD.y);
+        }
 
         EventBus.on(GameEvents.MONEY_IN, this.onMoneyIn, this);
         EventBus.on(GameEvents.PROGRESS_CHANGED, this.onProgressChanged, this);
-        EventBus.on(GameEvents.PIG_REACHED_PEN, this.onPigReachedPen, this);
+        EventBus.on(GameEvents.DRAGON_HEAD_LOST, this.onDragonHeadLost, this);
+        EventBus.on(GameEvents.DRAGON_DEFEATED, this.onDragonDefeated, this);
 
         this.events.once('shutdown', () => {
             EventBus.off(GameEvents.MONEY_IN, this.onMoneyIn, this);
             EventBus.off(GameEvents.PROGRESS_CHANGED, this.onProgressChanged, this);
-            EventBus.off(GameEvents.PIG_REACHED_PEN, this.onPigReachedPen, this);
+            EventBus.off(GameEvents.DRAGON_HEAD_LOST, this.onDragonHeadLost, this);
+            EventBus.off(GameEvents.DRAGON_DEFEATED, this.onDragonDefeated, this);
         });
 
         // Apply whatever GameState already holds (e.g. if a poll landed before this
         // scene finished creating), then start/continue polling.
         this.onProgressChanged({
             ratio: GameState.ratio,
-            metersRemaining: GameState.metersRemaining,
             totalThisWeek: GameState.totalThisWeek,
             plan: GameState.plan,
-            roadDelayMs: 0,
+            headsRemaining: GameState.headsRemaining,
         });
 
         DataPollingService.start();
     }
 
-    /**
-     * A few low-alpha neon glow strips and twinkling stars layered over the
-     * static bg_city image — slow, narrow-range flicker so the background
-     * reads as alive without being distracting on an always-on office display.
-     */
-    private addAmbientBackground(tableauObjects: GameObjects.GameObject[]) {
-        const neonColors = [0x2fd0e0, 0xff4fa3, 0xc9a227];
-        const neonX = [150, 450, 780];
-        neonX.forEach((x, i) => {
-            const strip = this.add.rectangle(x, 175, 36, 320, neonColors[i % neonColors.length], 0.14);
-            addIdleFlicker(this, strip, 0.06, 0.16, 3500 + i * 900, i * 500);
-            tableauObjects.push(strip);
-        });
-
-        for (let i = 0; i < 8; i++) {
-            const star = this.add.circle(60 + i * 115 + Math.random() * 40, 20 + Math.random() * 110, 1.5, 0xffffff, 0.7);
-            addIdleFlicker(this, star, 0.25, 0.85, 2000 + Math.random() * 2000, Math.random() * 1500);
-            tableauObjects.push(star);
-        }
-    }
-
     private onMoneyIn(payload: MoneyInPayload) {
-        AudioSystem.playHitThud();
+        // The hero dashes to the dragon; the thud, the dragon's reaction and the
+        // lead's cheer all land with the blow, not with the sale event.
+        this.time.delayedCall(HERO.IMPACT_MS, () => AudioSystem.playHitThud());
 
         const hero = this.heroes.get(payload.heroSlug);
         if (hero) {
-            hero.playHit(this.pig.x, payload.delta);
-            const floatingAmount = emitFloatingAmount(
-                this, hero.x, hero.y, payload.delta,
+            hero.playHit(payload.delta);
+            this.time.delayedCall(HERO.IMPACT_MS, () => this.dragon.reactToHit());
+            emitFloatingAmount(
+                this, hero.x, hero.y - 150, payload.delta,
                 HUD.BAR_X + HUD.BAR_WIDTH / 2, HUD.BAR_Y + HUD.BAR_HEIGHT / 2
             );
-            this.roadCamera.ignore(floatingAmount);
         }
-
-        this.pig.reactToHit();
 
         // The branch lead isn't tied to one department — she cheers on every sale.
-        if (this.flyingHeroSlug && payload.heroSlug !== this.flyingHeroSlug) {
-            this.heroes.get(this.flyingHeroSlug)?.playCheer();
-        }
+        this.time.delayedCall(HERO.IMPACT_MS, () => this.lead?.playCheer());
     }
 
     private onProgressChanged(payload: ProgressChangedPayload) {
-        this.pig.setProgress(payload.ratio, payload.metersRemaining);
-
-        // Skip the very first application (just establishing the baseline on
-        // load), and skip polls that didn't actually move the pig — otherwise
-        // every unchanged poll (every ~15s) would still pop the flythrough.
-        const ratioChanged = Math.abs(payload.ratio - this.lastRatio) > 1e-6;
-        if (this.hasAppliedFirstProgress && ratioChanged) {
-            // Wait for the staggered hit animations to finish playing on the
-            // tableau before the flythrough steals the screen.
-            this.time.delayedCall(payload.roadDelayMs, () => this.roadCamera.flyTo(payload.ratio));
+        // Heads only ever *drop* through DRAGON_HEAD_LOST (animated, delayed so the
+        // blows read first). Here we handle the baseline on load and regrowth
+        // (a new week or a raised plan pushed the ratio back down).
+        // The baseline is the first application made *after real data has landed*
+        // (create() also calls this once with an empty GameState — that one must not
+        // count, or the first poll's lower head count would be treated as a drop).
+        if (!this.hasAppliedFirstProgress) {
+            this.dragon.setHeads(payload.headsRemaining, false);
+            this.hasAppliedFirstProgress = GameState.hasBaseline;
+        } else if (payload.headsRemaining > this.dragon.headCount) {
+            this.dragon.setHeads(payload.headsRemaining, true);
         }
-        // If the finale already played and we've dropped back under 100% (a
-        // new week starting, or the plan being raised), let the boss's held
-        // victory pose/pulse relax back to normal.
+
+        // Finale already played and we've dropped back under 100%: relax the victory pose.
         if (this.hasPlayedVictory && payload.ratio < 1) {
             this.hasPlayedVictory = false;
-            if (this.flyingHeroSlug) this.heroes.get(this.flyingHeroSlug)?.resetPose();
+            this.lead?.resetPose();
         }
-
-        this.hasAppliedFirstProgress = true;
-        this.lastRatio = payload.ratio;
     }
 
-    private onPigReachedPen(payload: PigReachedPenPayload) {
+    // Both handlers are delayed (so the blows read first), and the data can move
+    // on in the meantime — e.g. the plan is raised mid-cascade and the ratio drops
+    // back. A stale event must then be dropped, or the dragon would end up
+    // headless/grey while GameState says it still has heads.
+    private onDragonHeadLost(payload: DragonHeadLostPayload) {
         this.time.delayedCall(payload.delayMs, () => {
+            if (payload.heads < GameState.headsRemaining) return;
+            this.dragon.loseHead(payload.heads);
+        });
+    }
+
+    private onDragonDefeated(payload: DragonDefeatedPayload) {
+        this.time.delayedCall(payload.delayMs + DRAGON.HEAD_LOSS_DURATION_MS, () => {
+            if (!GameState.dragonDefeated) return;
             AudioSystem.playFanfare();
             this.hasPlayedVictory = true;
-            this.heroes.forEach((hero, slug) => {
-                if (slug === this.flyingHeroSlug) hero.playVictory();
-                else hero.playCelebrate();
-            });
+            this.dragon.defeat();
+            this.heroes.forEach(hero => hero.playCelebrate());
+            this.lead?.playVictory();
             this.cameras.main.shake(300, 0.008);
         });
     }

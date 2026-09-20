@@ -40,8 +40,11 @@ class AudioSystemImpl {
         this.noiseBurst(0.05, 0.15);
     }
 
-    playWhoosh() {
-        this.noiseBurst(0.4, 0.06, 'lowpass', 400);
+    /** Low rumbling roar + crash when the dragon loses a head. */
+    playHeadLost() {
+        this.tone(70, 'sawtooth', 0.01, 0.55);
+        this.tone(52, 'square', 0.02, 0.6, 0.05);
+        this.noiseBurst(0.5, 0.14, 'lowpass', 500);
     }
 
     playFanfare() {

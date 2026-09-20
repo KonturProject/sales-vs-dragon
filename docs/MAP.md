@@ -1,26 +1,29 @@
 # Карта проекта
 
-Справочник по структуре репозитория. Для контекста/истории решений см. [gameplan.md](./gameplan.md) и [tech.md](./tech.md).
+Справочник по структуре репозитория. Концепция и механика — [gameplan.md](./gameplan.md) и [dragon-track.md](./dragon-track.md), технические решения — [tech.md](./tech.md).
 
 ## Верхний уровень
 
 ```
 claude first pr/                        <- корень (git-репозиторий, задеплоен на GitHub: KonturProject/svin-i-zagon)
 ├── CLAUDE.md                            инструкции для Claude Code (команды, архитектура, гочи) — читается автоматически
-├── ROP.jpg                              исходный референс-арт (фотореалистичный, больше не используется в игре)
+├── ROP.jpg                              исходный референс-арт первой версии (в игре не используется)
 ├── docs/                                вся документация проекта
-│   ├── gameplan.md                      текущее описание/статус (этот файл — сосед)
-│   ├── tech.md                          технические решения и их обоснование
+│   ├── gameplan.md                      концепция, ростер, статус
+│   ├── dragon-track.md                  трек «Дракон»: правила механики, инвентаризация ассетов, план работ
+│   ├── tech.md                          технические решения и их обоснование (пайплайн ассетов, механика, Fooocus)
 │   └── MAP.md                           ты здесь
 ├── apps-script/                         исходник бэкенда (копия того, что реально лежит в Apps Script)
 │   ├── Code.gs
 │   ├── appsscript.json
 │   └── README.md                        инструкция по ручному деплою
 ├── game/                                Vite+Phaser+TS проект — вся игра
-├── .claude/skills/                      установленные скиллы game-creator, caveman и др. (см. память/предыдущие обсуждения) — исключены из git
-├── .agents/skills/                      установленные скиллы caveman (дубликат для другого раннера) — исключены из git
+├── .claude/skills/                      установленные скиллы game-creator, caveman и др. — исключены из git
+├── .agents/skills/                      установленные скиллы (дубликат для другого раннера) — исключены из git
 └── skills-lock.json                     служебный файл установщика скиллов — исключён из git
 ```
+
+Fooocus (генератор картинок) лежит **вне** репозитория — его запускает пользователь; операционный справочник — скилл `~/.claude/skills/fooocus/SKILL.md`.
 
 ## `game/` — фронтенд (Phaser 4 + Vite + TS)
 
@@ -31,85 +34,81 @@ game/
 ├── public/
 │   ├── config.json                      {appsScriptUrl, useMock} — читается в рантайме, правится без пересборки
 │   ├── assets/
-│   │   ├── sprites/                     ВСЕ спрайты игры (пиксель-арт), см. таблицу ниже
-│   │   ├── mock/mock-status.json        фикстура для офлайн-разработки (useMock: true)
-│   │   ├── bg.png, logo.png             неиспользуемые остатки шаблона phaserjs/template-vite-ts
+│   │   ├── sprites/                     ВСЕ спрайты игры — результат tools/build-sprites.py, см. таблицу ниже
+│   │   ├── mock/mock-status.json        фикстура для офлайн-разработки (useMock: true), коды отделов СР1/2/3/5/6/9
+│   │   └── bg.png, logo.png             неиспользуемые остатки шаблона phaserjs/template-vite-ts
 │   └── style.css, favicon.png
 ├── src/
 │   ├── main.ts                          bootstrap игры + dev-хук window.__debug (только import.meta.env.DEV)
-│   ├── vite-env.d.ts
 │   └── game/
-│       ├── main.ts                      Phaser.Game config: pixelArt:true, roundPixels:true, список сцен
+│       ├── main.ts                      Phaser.Game config: pixelArt:true, roundPixels:true, буфер 2560×1440 (RENDER_SCALE 2), список сцен
 │       ├── core/
-│       │   ├── Constants.ts             ВСЕ магические числа: GAME, PIG, PEN, HERO, ROAD, HUD, FX, POLL, HERO_SLUGS
-│       │   ├── EventBus.ts              Phaser.Events.EventEmitter singleton + типы событий/payload'ов (включая MILESTONE_REACHED, PIG_REACHED_PEN{delayMs})
-│       │   └── GameState.ts             plan/totalThisWeek/byRop/ratio/reachedPen/lastMilestoneRatio — источник истины для UI
+│       │   ├── Constants.ts             ВСЕ магические числа: GAME (+RENDER_SCALE), DAYS, DRAGON, HERO (слоты, фазы удара, STRIKE_FRONT_X), HUD, FX, POLL, HERO_SLUGS
+│       │   ├── Render.ts                fitCameraToGame(scene): зум камеры ×RENDER_SCALE — вызывать первой строкой в каждой сцене
+│       │   ├── EventBus.ts              Events.EventEmitter singleton + типы событий (MONEY_IN, PROGRESS_CHANGED, DRAGON_HEAD_LOST, DRAGON_DEFEATED, DATA_UPDATED, FETCH_ERROR)
+│       │   └── GameState.ts             plan/totalThisWeek/byRop/ratio/headsRemaining/lastHeads/dragonDefeated — источник истины для UI
 │       ├── scenes/
 │       │   ├── Boot.ts                  пустой, сразу стартует Preloader
-│       │   ├── Preloader.ts             грузит все текстуры + рисует экран загрузки (Graphics/Text, без ассетов); при 404/ошибке — codegen-плейсхолдер под тем же ключом
-│       │   ├── PenScene.ts              ГЛАВНАЯ сцена: тableau героев+свина+загона, дорога, камеры, мерцающий фон, оркестрация PIG_REACHED_PEN
-│       │   └── HUDScene.ts              параллельная сцена: прогресс-бар (одометр), индикатор связи, mute-кнопка, Leaderboard, конфетти/виньетка/цвет.вспышки
+│       │   ├── Preloader.ts             грузит все текстуры + экран загрузки; при 404 — цветной плейсхолдер под тем же ключом
+│       │   ├── PenScene.ts              ГЛАВНАЯ сцена: герои слева, дракон на горе золота справа, Круэлла в стороне; реакции на события
+│       │   └── HUDScene.ts              параллельная сцена: полоса недели с делениями «день 1…5», счётчик голов, победная надпись, рейтинг, индикатор связи, mute
 │       ├── objects/
-│       │   ├── HeroSprite.ts            Container(sprite); playHit()/playCheer()/playCelebrate()/playVictory()/resetPose(), idle-эмоции (без glow/тени — убраны по просьбе пользователя)
-│       │   ├── Pig.ts                   Container(sprite) + speech bubble; setProgress() (само-сброс celebrated), reactToHit(), celebrate()
-│       │   ├── Leaderboard.ts           живой пересортируемый мини-рейтинг 6 отделов (Container)
-│       │   └── RoadLayer.ts             длинная "дорога" (3200px, параллакс scrollFactor на bg/sky) — маркеры дистанции, свин-маркер, только для RoadCamera
+│       │   ├── Dragon.ts                Container(гора золота + тело дракона); setHeads(), reactToHit(), loseHead(), defeat()
+│       │   ├── HeroSprite.ts            Container(sprite, якорь у ног); playHit(): рывок до подножия горы, удар по прибытии, возврат; позы round-robin; playCelebrate(); редкий наклон (без покачивания по y)
+│       │   ├── LeadSprite.ts            Круэлла: редкий наклон, playCheer() на каждую продажу, playVictory()/resetPose()
+│       │   └── Leaderboard.ts           живой пересортируемый мини-рейтинг 6 отделов (Container)
 │       ├── systems/
-│       │   ├── DataPollingService.ts    fetch раз в 15с, diff по РОПам → money:in/progress-changed/pig:reached-pen/milestone-reached
-│       │   ├── RoadCamera.ts            вторая Phaser-камера: докинг в угол ⇄ полноэкранный пролёт по дороге; ignore() passthrough для transient FX
+│       │   ├── DataPollingService.ts    fetch раз в 15с, diff по РОПам → MONEY_IN; расчёт голов → DRAGON_HEAD_LOST / DRAGON_DEFEATED
 │       │   ├── RosterConfig.ts          heroSlugForRop(), ropNameForSlug(), heroDef() — обёртка над config/*.json
-│       │   ├── Audio.ts                 AudioSystem — процедурный звук через сырой AudioContext (без файлов), mute в localStorage
-│       │   └── Fx.ts                    emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount, flashScreen, addIdleBob/Flicker
+│       │   ├── Audio.ts                 AudioSystem — процедурный звук (удар, рык при потере головы, фанфара), mute в localStorage
+│       │   └── Fx.ts                    emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst, flashScreen, addIdleSway/Flicker
 │       └── config/
-│           ├── heroRoster.json          фиксированный пул из 7 скинов (slug/sprite/color/flying)
-│           └── ropMapping.json          РЕАЛЬНЫЙ маппинг: СР1→red, СР2→green, СР3→yellow, СР5→black, СР6→purple, СР9→blue
+│           ├── heroRoster.json          ростер: slug/sprite/color/lead/hits — `hits` = число поз удара (6 героев + Круэлла)
+│           └── ropMapping.json          СР1→lion, СР2→scrooge, СР3→grinch, СР5→yoda, СР6→neznaika, СР9→minion
 ├── src-admin/
 │   ├── main.ts                          логика админки: PIN-форма → форма плана → POST с text/plain (обход CORS preflight)
-│   └── styles.css                       киберпанк-стиль карточки (Rajdhani/Manrope, неоновые углы)
+│   └── styles.css                       киберпанк-стиль карточки
 ├── assets-source/                       ИСХОДНИКИ ассетов, не публикуются в игру напрямую
-│   └── raw-pixel/                       второй набор арта от пользователя + очищенные (`clean_*.png`) версии
+│   ├── raw-pixel/                       прежний арт (героини/свин/Валькирия) — больше не используется, лежит как архив
+│   └── character-refs/                  ТЕКУЩИЙ арт (Fooocus + доработка в Photoshop, прозрачный PNG): `СР1 - Лев`, `СР2 - Скрудж`, `СР3 - Гринч`, `СР 5 - йода`, `СР6 - Незнайка с деньгами`, `СР9 - миньон` (персонаж + Анимация 1..3), `Дракон/` (6 состояний + гора золота), `Круэлла …/`, `фон.jfif` (пещера)
+├── tools/build-sprites.py               character-refs → public/assets/sprites (обрезка, единый масштаб поз, даунскейл ×2, совмещение состояний дракона, кадрирование фона); запуск: `python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F]`
 ├── vite/config.{dev,prod}.mjs           prod-конфиг собирает ДВЕ точки входа (index.html + admin.html)
 ├── package.json                         scripts: dev, build, dev-nolog, build-nolog, deploy (gh-pages)
 └── tsconfig.json
 ```
 
-### Спрайты в `public/assets/sprites/` (все пиксель-арт; базовые модели героинь/Валькирии — последний раунд правок от пользователя: обрезаны вручную в Photoshop, `assets-source/raw-pixel/clean_*.png` → скопированы как есть)
+### Спрайты в `public/assets/sprites/` (генерируются скриптом; текстуры вдвое крупнее экранного размера, в игре `scale 0.5`)
 
 | Файл | Использование |
 |---|---|
-| `hero_blue/green/purple/yellow/red/black.png` | 6 героинь-отделов, статичные позы |
-| `hero_boss_flying.png` | Валькирия, дефолтная поза |
-| `hero_boss_flying_victory/celebrate/happy/sad.png` | эмоции Валькирии — `celebrate` играет в `playCheer()` (каждая продажа), `victory` в `playVictory()` (финал недели, держится до сброса); `happy/sad` **пока не используются** |
-| `pig.png` | свин, дефолт = поза "calm" |
-| `pig_dizzy.png` | играет 0.5с при каждом ударе (`reactToHit()`) |
-| `pig_curled.png` | играет при достижении цели (`celebrate()`) |
-| `pig_ko.png` | загружен, **пока не используется** — резерв под будущую механику (например "план провален") |
-| `pen.png` | процедурный пиксельный загон (сгенерирован кодом, НЕ файл от пользователя — см. tech.md про несовпадение `Загон.jfif`) |
-| `bg_city.png` | процедурный киберпанк-скайлайн (фон тableau) |
-| `hero_<color>_hit1..N.png` | альтернативные позы удара (N=3 у red/green/yellow/black, N=4 у purple/blue) — чередуются round-robin в `HeroSprite.playHit()`, см. tech.md |
+| `hero_lion / hero_scrooge / hero_grinch / hero_yoda / hero_neznaika / hero_minion.png` | 6 героев-отделов, стоячая поза (idle) |
+| `hero_<имя>_hit1..3.png` | позы удара (у Скруджа только `hit1`), чередуются round-robin в `HeroSprite.playHit()` |
+| `lead_cruella.png` | Круэлла, руководитель филиала (одна поза) |
+| `dragon_heads5.png … dragon_heads0.png` | дракон с N головами (5 = цел, 0 = все срублены); совмещены между собой, меняются на месте |
+| `gold_mountain.png` | гора золота под драконом (символ плана) |
+| `bg_cave.jpg` | фон-пещера 1280×720 (кадрируется из `фон.jfif`), под героями пол-платформа, справа тёмный тоннель за драконом |
 
 ## `apps-script/` — бэкенд
 
-Реальный деплой — **standalone Apps Script проект** на аккаунте `ignaton2001@gmail.com`, называется "Свин и загон backend", привязан к таблице по `SPREADSHEET_ID` внутри `Code.gs` (не через Extensions-меню — так проще автоматизировать, см. tech.md/gameplan.md).
+Реальный деплой — **standalone Apps Script проект** на аккаунте `ignaton2001@gmail.com`, называется "Свин и загон backend" (название осталось от первой версии), привязан к таблице по `SPREADSHEET_ID` внутри `Code.gs` (не через Extensions-меню — так проще автоматизировать).
 
 - **Google Таблица**: https://docs.google.com/spreadsheets/d/1TQHdp3ylSog5pfmhIy1WEB0cG_YdSYB19V7FvnPlIWs/edit
   - Вкладка **Sales**: `Date | Amount | ROP` — one row per sale
-  - Вкладка **Settings**: `Key | Value` — строки `WeeklyPlan`, `TotalMeters`
+  - Вкладка **Settings**: `Key | Value` — строки `WeeklyPlan`, `TotalMeters` (метры остались с прошлой концепции; фронтенд их игнорирует)
 - **Web App URL** (уже прописан в `game/public/config.json`): `https://script.google.com/macros/s/AKfycbzc4aNiiEJLTO8HkCA79JD6ClYig3q5ao_DKrq6iqwv6D8EZDmGm56F02tKPUPFEdmLaA/exec`
-- **PIN админки: `473920`** — хранится только в `PropertiesService` самого Apps Script проекта, нигде в репозитории.
+- **PIN админки** хранится только в `PropertiesService` Apps Script проекта (задаётся функцией `setAdminPin_()` в редакторе Apps Script) и известен пользователю. В репозитории и документации его быть не должно.
 - Деплой публичный (`Anyone`) — отдаёт только агрегаты (сумма, разбивка по РОПам), не сырые строки. Подтверждено пользователем как приемлемо.
 
 ## Статус деплоя игры
 
 - Локальная разработка: `npm run dev` (или `dev-nolog`) из `game/`, либо `.claude/launch.json` → preview "sales-game-dev" (порт 8080).
-- **Задеплоено на GitHub Pages.** Репозиторий: https://github.com/KonturProject/svin-i-zagon (публичный). Игра: https://konturproject.github.io/svin-i-zagon/. Админка: https://konturproject.github.io/svin-i-zagon/admin.html.
-- `game/package.json` → `npm run deploy` = `npm run build-nolog && gh-pages -d dist` (пакет `gh-pages` в devDependencies). Vite `base: './'` — все пути в собранном `index.html`/`admin.html` относительные, поэтому GitHub Pages под-путь (`/svin-i-zagon/`) не требует отдельной настройки base.
-- GitHub Pages включился автоматически при первом пуше в ветку `gh-pages` (source: `gh-pages` branch, path `/`) — проверять/менять через `gh api repos/KonturProject/svin-i-zagon/pages`.
-- Авторизация: `gh auth status` под аккаунтом `KonturProject` (GitHub CLI установлен через winget). Повторный деплой после новых изменений — просто `npm run deploy` из `game/`.
-- Корневой `.gitignore` исключает `node_modules`, `dist`, а также `.claude/`, `.agents/`, `skills-lock.json` (инструментарий Claude Code, не часть игры).
+- **Задеплоено на GitHub Pages** (репозиторий https://github.com/KonturProject/svin-i-zagon, публичный). Игра: https://konturproject.github.io/svin-i-zagon/. Админка: https://konturproject.github.io/svin-i-zagon/admin.html. **Опубликована ещё версия «свин в загон»** — версия с драконом попадёт на сайт после `npm run deploy`.
+- `game/package.json` → `npm run deploy` = `npm run build-nolog && gh-pages -d dist` (пакет `gh-pages` в devDependencies). Vite `base: './'` — пути в собранном HTML относительные, под-путь Pages не требует настройки.
+- GitHub Pages включился автоматически при первом пуше в ветку `gh-pages` (source: `gh-pages` branch, path `/`) — проверять через `gh api repos/KonturProject/svin-i-zagon/pages`.
+- Авторизация: `gh auth status` под аккаунтом `KonturProject` (GitHub CLI установлен через winget).
+- Корневой `.gitignore` исключает `node_modules`, `dist`, `.claude/`, `.agents/`, `skills-lock.json`.
 
-## Что дальше (открытые пункты на момент этой карты)
+## Что дальше
 
-1. Реальный пиксельный `pen.png` от пользователя (пока процедурный).
-2. Подтвердить точный формат кода отдела в самой таблице (регистр/пробелы у "СР1" и т.д.) — если удар не анимируется, смотреть сюда первым делом.
-3. Решить, нужны ли `hero_boss_flying_happy/sad`, `pig_ko` — либо подключить в новую механику, либо оставить как резерв.
+1. Подтвердить точный формат кода отдела в самой таблице (регистр/пробелы у «СР1» и т.д.) — если удар не анимируется, смотреть сюда первым делом.
+2. Дополнительные позы удара для Скруджа и реакции Круэллы (если появится арт).

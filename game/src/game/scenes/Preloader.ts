@@ -1,10 +1,11 @@
 import { Scene, Display, Loader } from 'phaser';
 import { RosterConfig } from '../systems/RosterConfig';
-import { GAME, HERO } from '../core/Constants';
+import { DRAGON, GAME } from '../core/Constants';
+import { fitCameraToGame } from '../core/Render';
 
 /**
  * Loads the real cropped sprites from public/assets/sprites/. Any file that
- * doesn't exist yet (e.g. pen.png, not generated yet) fails to load — on that
+ * doesn't exist yet fails to load — on that
  * specific loaderror we generate a colored-shape placeholder texture under the
  * same key, so the scene is always fully playable regardless of which real
  * assets have landed. Real PNGs simply take priority once present; no code
@@ -21,22 +22,17 @@ export class Preloader extends Scene {
         this.load.on('loaderror', (file: Loader.File) => this.onLoadError(file.key));
 
         this.load.setPath('assets/sprites');
-        this.load.image('bg_city', 'bg_city.png');
-        this.load.image('pig', 'pig.png');
-        this.load.image('pig_dizzy', 'pig_dizzy.png');
-        this.load.image('pig_ko', 'pig_ko.png');
-        this.load.image('pig_curled', 'pig_curled.png');
-        this.load.image('pen', 'pen.png');
+        this.load.image('bg_cave', 'bg_cave.jpg');
+        this.load.image('gold_mountain', 'gold_mountain.png');
+        for (let heads = 0; heads <= DRAGON.HEADS_MAX; heads++) {
+            this.load.image(`dragon_heads${heads}`, `dragon_heads${heads}.png`);
+        }
         for (const hero of RosterConfig.heroes) {
             this.load.image(hero.sprite, `${hero.sprite}.png`);
-            for (let i = 1; i <= HERO.MAX_HIT_POSES; i++) {
+            for (let i = 1; i <= hero.hits; i++) {
                 this.load.image(`${hero.sprite}_hit${i}`, `${hero.sprite}_hit${i}.png`);
             }
         }
-        this.load.image('hero_boss_flying_victory', 'hero_boss_flying_victory.png');
-        this.load.image('hero_boss_flying_celebrate', 'hero_boss_flying_celebrate.png');
-        this.load.image('hero_boss_flying_happy', 'hero_boss_flying_happy.png');
-        this.load.image('hero_boss_flying_sad', 'hero_boss_flying_sad.png');
     }
 
     create() {
@@ -53,12 +49,14 @@ export class Preloader extends Scene {
         const barX = w / 2 - barW / 2;
         const barY = h / 2 + 20;
 
+        fitCameraToGame(this);
         this.cameras.main.setBackgroundColor('#08090f');
 
-        const title = this.add.text(w / 2, h / 2 - 30, 'СВИН И ЗАГОН', {
+        const title = this.add.text(w / 2, h / 2 - 30, 'ОТДЕЛЫ ПРОТИВ ДРАКОНА', {
             fontFamily: 'Arial Black, Arial, sans-serif',
-            fontSize: '32px',
+            fontSize: '30px',
             color: '#ffffff',
+            resolution: GAME.RENDER_SCALE,
         }).setOrigin(0.5);
 
         const track = this.add.graphics();
@@ -87,32 +85,22 @@ export class Preloader extends Scene {
     private onLoadError(key: string) {
         if (this.textures.exists(key)) return; // real file already loaded fine elsewhere
 
-        // Alternate hit poses are optional variety, not required assets — a hero
-        // with fewer poses than HERO.MAX_HIT_POSES is expected to 404 past its
-        // count. HeroSprite checks texture existence before using any of these,
-        // so no placeholder is needed here.
+        // Attack poses are optional variety (HeroSprite checks texture existence
+        // before using them), so a missing one gets no placeholder.
         if (/_hit\d+$/.test(key)) return;
 
         const g = this.make.graphics({ x: 0, y: 0 });
 
-        if (key === 'bg_city') {
+        if (key === 'bg_cave') {
             g.fillGradientStyle(0x08090f, 0x08090f, 0x2a1830, 0x2a1830, 1);
             g.fillRect(0, 0, GAME.WIDTH, GAME.HEIGHT);
-            g.generateTexture('bg_city', GAME.WIDTH, GAME.HEIGHT);
-        } else if (key === 'pen') {
-            g.fillStyle(0x8b5a2b, 1);
-            g.fillRoundedRect(0, 0, 160, 100, 8);
-            g.lineStyle(6, 0x5a3a1a, 1);
-            g.strokeRoundedRect(0, 0, 160, 100, 8);
-            g.generateTexture('pen', 160, 100);
-        } else if (key.startsWith('pig')) {
-            g.fillStyle(0xf3b6c9, 1);
-            g.fillEllipse(70, 70, 130, 110);
-            g.fillStyle(0xc22c2c, 1);
-            g.fillTriangle(10, 40, 10, 110, 60, 75);
-            g.generateTexture(key, 140, 140);
+            g.generateTexture('bg_cave', GAME.WIDTH, GAME.HEIGHT);
+        } else if (key.startsWith('dragon_') || key === 'gold_mountain') {
+            g.fillStyle(key === 'gold_mountain' ? 0xc9a227 : 0xc22c2c, 1);
+            g.fillRoundedRect(0, 0, 360, 200, 24);
+            g.generateTexture(key, 360, 200);
         } else {
-            const def = RosterConfig.heroDef((key.startsWith('hero_boss_flying') ? 'hero_boss_flying' : key) as never);
+            const def = RosterConfig.heroDef(key as never);
             const color = def ? Display.Color.HexStringToColor(def.color).color : 0x888888;
             g.fillStyle(color, 1);
             g.fillCircle(60, 60, 55);

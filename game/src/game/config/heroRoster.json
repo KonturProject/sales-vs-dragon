@@ -1,11 +1,11 @@
 {
     "heroes": [
-        { "slug": "hero_blue", "sprite": "hero_blue", "color": "#2f6fdb", "flying": false },
-        { "slug": "hero_green", "sprite": "hero_green", "color": "#2fa84a", "flying": false },
-        { "slug": "hero_purple", "sprite": "hero_purple", "color": "#7b3fbf", "flying": false },
-        { "slug": "hero_yellow", "sprite": "hero_yellow", "color": "#d9b512", "flying": false },
-        { "slug": "hero_red", "sprite": "hero_red", "color": "#c22c2c", "flying": false },
-        { "slug": "hero_black", "sprite": "hero_black", "color": "#2b2b2b", "flying": false },
-        { "slug": "hero_boss_flying", "sprite": "hero_boss_flying", "color": "#c9a227", "flying": true }
+        {"slug": "hero_lion", "sprite": "hero_lion", "color": "#e07b1f", "lead": false, "hits": 3},
+        {"slug": "hero_scrooge", "sprite": "hero_scrooge", "color": "#c9a227", "lead": false, "hits": 1},
+        {"slug": "hero_grinch", "sprite": "hero_grinch", "color": "#7ed321", "lead": false, "hits": 3},
+        {"slug": "hero_yoda", "sprite": "hero_yoda", "color": "#2fbf8f", "lead": false, "hits": 3},
+        {"slug": "hero_neznaika", "sprite": "hero_neznaika", "color": "#3fa34d", "lead": false, "hits": 3},
+        {"slug": "hero_minion", "sprite": "hero_minion", "color": "#f5c518", "lead": false, "hits": 3},
+        {"slug": "lead_cruella", "sprite": "lead_cruella", "color": "#d9d9d9", "lead": true, "hits": 0}
     ]
 }

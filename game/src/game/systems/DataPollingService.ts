@@ -1,6 +1,6 @@
 import { EventBus, GameEvents, MoneyInPayload, ProgressChangedPayload } from '../core/EventBus';
 import { GameState, StatusResponse } from '../core/GameState';
-import { HERO, POLL, ROAD } from '../core/Constants';
+import { DRAGON, HERO, POLL } from '../core/Constants';
 import { RosterConfig } from './RosterConfig';
 
 interface RuntimeConfig {
@@ -8,7 +8,8 @@ interface RuntimeConfig {
     useMock?: boolean;
 }
 
-const MILESTONES = [0.25, 0.5, 0.75] as const;
+/** Pause after the last hit animation of a poll before the dragon starts losing heads, so the blow reads first. */
+const HEAD_LOSS_LEAD_MS = 600;
 
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 let consecutiveFailures = 0;
@@ -58,41 +59,45 @@ function diffAndEmit(previous: Record<string, number> | null, status: StatusResp
         }
     }
 
-    // The road flythrough should only open once every staggered hit has had
-    // time to play out — otherwise it steals attention from the hit itself.
+    // Head loss / victory should only play once every staggered hit from this
+    // poll has had time to land — otherwise it steals attention from the blow.
     const hitsFinishAt = hitCount > 0 ? (hitCount - 1) * HERO.HIT_STAGGER_MS + HERO.HIT_DURATION_MS : 0;
-    const roadDelayMs = hitCount > 0 ? hitsFinishAt + ROAD.OPEN_DELAY_MS : 0;
+    const settleDelayMs = hitCount > 0 ? hitsFinishAt + HEAD_LOSS_LEAD_MS : 0;
+
+    const isBaseline = previous === null;
+    const heads = GameState.headsRemaining;
+    const previousHeads = GameState.lastHeads;
 
     const progress: ProgressChangedPayload = {
         ratio: GameState.ratio,
-        metersRemaining: status.metersRemaining,
         totalThisWeek: status.totalThisWeek,
         plan: status.plan,
-        roadDelayMs,
+        headsRemaining: heads,
     };
     EventBus.emit(GameEvents.PROGRESS_CHANGED, progress);
     EventBus.emit(GameEvents.DATA_UPDATED, status);
 
-    if (GameState.ratio >= 1 && !GameState.reachedPen) {
-        GameState.reachedPen = true;
-        EventBus.emit(GameEvents.PIG_REACHED_PEN, { delayMs: roadDelayMs });
-    } else if (GameState.ratio < 1 && GameState.reachedPen) {
-        // New week (or a raised plan) dropped us back under 100% — un-latch so
-        // crossing the goal again later re-fires the celebration.
-        GameState.reachedPen = false;
-    }
-
-    // Smaller flourishes at 25/50/75% keep the screen alive throughout the
-    // week, not just at the very end. Ratchets so each threshold fires once
-    // per crossing; dropping back under 25% (new week) resets the ratchet.
-    for (const m of MILESTONES) {
-        if (GameState.ratio >= m && GameState.lastMilestoneRatio < m) {
-            GameState.lastMilestoneRatio = m;
-            EventBus.emit(GameEvents.MILESTONE_REACHED, { ratio: m });
+    // The first poll after page load is only a baseline: PenScene puts the
+    // dragon straight into the right state, no head-loss animation for
+    // progress that was made before this tab opened.
+    let lostCount = 0;
+    if (!isBaseline && heads < previousHeads) {
+        for (let h = previousHeads - 1; h >= heads; h--) {
+            const delayMs = settleDelayMs + lostCount * DRAGON.HEAD_LOSS_STAGGER_MS;
+            lostCount++;
+            EventBus.emit(GameEvents.DRAGON_HEAD_LOST, { heads: h, delayMs });
         }
     }
-    if (GameState.ratio < 0.25) {
-        GameState.lastMilestoneRatio = 0;
+    GameState.lastHeads = heads;
+
+    if (GameState.ratio >= 1 && !GameState.dragonDefeated) {
+        GameState.dragonDefeated = true;
+        const delayMs = isBaseline ? 0 : settleDelayMs + lostCount * DRAGON.HEAD_LOSS_STAGGER_MS;
+        EventBus.emit(GameEvents.DRAGON_DEFEATED, { delayMs });
+    } else if (GameState.ratio < 1 && GameState.dragonDefeated) {
+        // New week (or a raised plan) dropped us back under 100% — un-latch so
+        // crossing the goal again later re-fires the victory.
+        GameState.dragonDefeated = false;
     }
 }
 
@@ -118,6 +123,12 @@ export const DataPollingService = {
         config = await loadRuntimeConfig();
         await tick();
         intervalHandle = setInterval(tick, POLL.INTERVAL_MS);
+    },
+
+    /** Dev-only entry point: runs a synthetic status through exactly the same apply/diff path as a real poll. */
+    applyForDebug(status: StatusResponse) {
+        const previous = GameState.applyStatus(status);
+        diffAndEmit(previous, status);
     },
 
     stop() {

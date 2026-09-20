@@ -6,7 +6,9 @@ export interface HeroDef {
     slug: HeroSlug;
     sprite: string;
     color: string;
-    flying: boolean;
+    lead: boolean;
+    /** How many `<sprite>_hit1..N` attack-pose textures exist for this hero. */
+    hits: number;
 }
 
 const heroes = heroRoster.heroes as HeroDef[];

@@ -9,8 +9,8 @@ import { GAME } from './core/Constants';
 //  https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
 const config: Phaser.Types.Core.GameConfig = {
     type: AUTO,
-    width: GAME.WIDTH,
-    height: GAME.HEIGHT,
+    width: GAME.WIDTH * GAME.RENDER_SCALE,
+    height: GAME.HEIGHT * GAME.RENDER_SCALE,
     parent: 'game-container',
     backgroundColor: '#0b1220',
     pixelArt: true,

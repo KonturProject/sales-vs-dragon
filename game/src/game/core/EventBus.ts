@@ -8,11 +8,10 @@ export interface MoneyInPayload {
 
 export interface ProgressChangedPayload {
     ratio: number;
-    metersRemaining: number;
     totalThisWeek: number;
     plan: number;
-    /** How long PenScene should wait before opening the road flythrough, so hit animations read first. */
-    roadDelayMs: number;
+    /** Dragon heads left after this poll (DAYS at 0%, 0 at 100%). */
+    headsRemaining: number;
 }
 
 export interface FetchErrorPayload {
@@ -20,26 +19,28 @@ export interface FetchErrorPayload {
     error: string;
 }
 
-export interface PigReachedPenPayload {
-    /** Wait this long before playing the finale — lets any still-unfolding hit animations from the same poll finish first. */
+export interface DragonHeadLostPayload {
+    /** Heads left once this one is gone. */
+    heads: number;
+    /** Wait this long before playing it — lets the hit animations from the same poll read first. */
     delayMs: number;
 }
 
-export interface MilestoneReachedPayload {
-    ratio: number;
+export interface DragonDefeatedPayload {
+    delayMs: number;
 }
 
 /**
  * Single shared emitter connecting DataPollingService (data layer) to the
- * Phaser scenes (PenScene draws hits/pig movement, HUDScene draws the bar).
+ * Phaser scenes (PenScene draws hits and the dragon, HUDScene draws the bar and the victory banner).
  */
 export const EventBus = new Events.EventEmitter();
 
 export const GameEvents = {
     DATA_UPDATED: 'data:updated',
     MONEY_IN: 'money:in',
-    PIG_REACHED_PEN: 'pig:reached-pen',
-    PROGRESS_CHANGED: 'pig:progress-changed',
+    PROGRESS_CHANGED: 'progress:changed',
     FETCH_ERROR: 'data:fetch-error',
-    MILESTONE_REACHED: 'pig:milestone-reached',
+    DRAGON_HEAD_LOST: 'dragon:head-lost',
+    DRAGON_DEFEATED: 'dragon:defeated',
 } as const;

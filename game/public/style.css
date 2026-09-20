@@ -13,3 +13,10 @@ body {
     justify-content: center;
     align-items: center;
 }
+
+/* The canvas buffer is 2x the logical size (GAME.RENDER_SCALE); smooth scaling to the
+   screen keeps text crisp. Phaser's pixelArt mode sets `image-rendering: pixelated`
+   inline, which makes non-integer scaling uneven — hence !important. */
+#game-container canvas {
+    image-rendering: auto !important;
+}

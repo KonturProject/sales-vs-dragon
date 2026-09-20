@@ -1,6 +1,7 @@
 import StartGame from './game/main';
 import { EventBus, GameEvents } from './game/core/EventBus';
-import { GameState } from './game/core/GameState';
+import { GameState, StatusResponse } from './game/core/GameState';
+import { DataPollingService } from './game/systems/DataPollingService';
 import { AudioSystem } from './game/systems/Audio';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,22 +20,26 @@ document.addEventListener('DOMContentLoaded', () => {
             hit: (heroSlug: string, delta = 10000) => {
                 EventBus.emit(GameEvents.MONEY_IN, { heroSlug, ropName: 'debug', delta });
             },
-            reachPen: (delayMs = 0) => {
-                EventBus.emit(GameEvents.PIG_REACHED_PEN, { delayMs });
-            },
-            pushStatus: (partial: Record<string, number>) => {
-                Object.assign(GameState.byRop, partial);
-                EventBus.emit(GameEvents.DATA_UPDATED, {
-                    ok: true,
-                    weekStart: '', weekEnd: '',
-                    plan: GameState.plan,
-                    totalThisWeek: GameState.totalThisWeek,
-                    totalMeters: GameState.totalMeters,
-                    metersRemaining: GameState.metersRemaining,
-                    byRop: Object.entries(GameState.byRop).map(([ropName, amount]) => ({ ropName, amount })),
+            /** Simulate the weekly total reaching `ratio` (0..1) of the plan: fires the same diff/events a real poll would. */
+            setRatio: (ratio: number) => {
+                const plan = GameState.plan || 5000000;
+                const total = Math.round(plan * ratio);
+                const rows = Object.keys(GameState.byRop).length
+                    ? Object.entries(GameState.byRop).map(([ropName, amount]) => ({ ropName, amount }))
+                    : [{ ropName: 'СР1', amount: 0 }];
+                const first = rows[0];
+                first.amount += total - GameState.totalThisWeek;
+                (window as any).__debug.injectStatus({
+                    ok: true, weekStart: '', weekEnd: '', plan, totalThisWeek: total, byRop: rows,
                     lastUpdated: new Date().toISOString(),
                 });
             },
+            /** Feed a status object through the real poll pipeline (diff -> hits, head loss, victory) without any network. */
+            injectStatus: (status: StatusResponse) => {
+                DataPollingService.applyForDebug(status);
+            },
+            /** `__debug.poller.stop()` freezes real polling so injected states aren't overwritten every 15s. */
+            poller: DataPollingService,
             audio: AudioSystem,
         };
     }

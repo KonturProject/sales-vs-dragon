@@ -1,3 +1,5 @@
+import { DAYS } from './Constants';
+
 export interface RopAmount {
     ropName: string;
     amount: number;
@@ -9,8 +11,8 @@ export interface StatusResponse {
     weekEnd: string;
     plan: number;
     totalThisWeek: number;
-    totalMeters: number;
-    metersRemaining: number;
+    totalMeters?: number;
+    metersRemaining?: number;
     byRop: RopAmount[];
     lastUpdated: string;
     error?: string;
@@ -23,14 +25,13 @@ export interface StatusResponse {
 class GameStateStore {
     plan = 0;
     totalThisWeek = 0;
-    totalMeters = 300;
-    metersRemaining = 300;
     byRop: Record<string, number> = {};
     /** true once at least one poll has landed — first poll is a baseline, never diffed */
     hasBaseline = false;
-    reachedPen = false;
-    /** Highest 25/50/75% milestone already celebrated this week — ratchets down to 0 once ratio drops back under 0.25. */
-    lastMilestoneRatio = 0;
+    /** Heads the dragon had after the previous poll — diffed to fire head-loss animations. */
+    lastHeads = DAYS;
+    /** Latched once the weekly plan is closed; released when ratio drops back under 1 (new week / raised plan). */
+    dragonDefeated = false;
     lastFetchOk = false;
     lastUpdated: string | null = null;
 
@@ -49,8 +50,6 @@ class GameStateStore {
         this.byRop = nextByRop;
         this.plan = status.plan;
         this.totalThisWeek = status.totalThisWeek;
-        this.totalMeters = status.totalMeters;
-        this.metersRemaining = status.metersRemaining;
         this.lastUpdated = status.lastUpdated;
         this.lastFetchOk = true;
         this.hasBaseline = true;
@@ -63,15 +62,21 @@ class GameStateStore {
         return Math.min(1, Math.max(0, this.totalThisWeek / this.plan));
     }
 
+    /**
+     * Dragon heads left: one is lost each time the cumulative total crosses another
+     * 1/DAYS of the weekly plan, so 0% -> DAYS heads and 100% -> 0 heads.
+     */
+    get headsRemaining(): number {
+        return DAYS - Math.floor(this.ratio * DAYS + 1e-9);
+    }
+
     reset() {
         this.plan = 0;
         this.totalThisWeek = 0;
-        this.totalMeters = 300;
-        this.metersRemaining = 300;
         this.byRop = {};
         this.hasBaseline = false;
-        this.reachedPen = false;
-        this.lastMilestoneRatio = 0;
+        this.lastHeads = DAYS;
+        this.dragonDefeated = false;
         this.lastFetchOk = false;
         this.lastUpdated = null;
     }
