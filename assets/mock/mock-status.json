@@ -4,16 +4,31 @@
     "weekEnd": "2026-09-15",
     "plan": 5000000,
     "totalThisWeek": 3200000,
-    "totalMeters": 300,
-    "metersRemaining": 108,
     "byRop": [
-        { "ropName": "Placeholder ROP 1", "amount": 540000 },
-        { "ropName": "Placeholder ROP 2", "amount": 610000 },
-        { "ropName": "Placeholder ROP 3", "amount": 480000 },
-        { "ropName": "Placeholder ROP 4", "amount": 720000 },
-        { "ropName": "Placeholder ROP 5", "amount": 390000 },
-        { "ropName": "Placeholder ROP 6", "amount": 260000 },
-        { "ropName": "Placeholder ROP 7 (lead)", "amount": 200000 }
+        {
+            "ropName": "СР1",
+            "amount": 720000
+        },
+        {
+            "ropName": "СР2",
+            "amount": 610000
+        },
+        {
+            "ropName": "СР3",
+            "amount": 540000
+        },
+        {
+            "ropName": "СР5",
+            "amount": 480000
+        },
+        {
+            "ropName": "СР6",
+            "amount": 390000
+        },
+        {
+            "ropName": "СР9",
+            "amount": 460000
+        }
     ],
     "lastUpdated": "2026-09-12T10:32:00+03:00"
 }
