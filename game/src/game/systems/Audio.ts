@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'svin_muted';
+const STORAGE_KEY = 'sales_vs_dragon_muted';
 const MASTER_VOLUME = 0.6;
 
 /**

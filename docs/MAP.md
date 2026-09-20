@@ -5,7 +5,7 @@
 ## Верхний уровень
 
 ```
-claude first pr/                        <- корень (git-репозиторий, задеплоен на GitHub: KonturProject/svin-i-zagon)
+claude first pr/                        <- корень (git-репозиторий, задеплоен на GitHub: KonturProject/sales-vs-dragon)
 ├── CLAUDE.md                            инструкции для Claude Code (команды, архитектура, гочи) — читается автоматически
 ├── ROP.jpg                              исходный референс-арт первой версии (в игре не используется)
 ├── docs/                                вся документация проекта
@@ -90,7 +90,7 @@ game/
 
 ## `apps-script/` — бэкенд
 
-Реальный деплой — **standalone Apps Script проект** на аккаунте `ignaton2001@gmail.com`, называется "Свин и загон backend" (название осталось от первой версии), привязан к таблице по `SPREADSHEET_ID` внутри `Code.gs` (не через Extensions-меню — так проще автоматизировать).
+Реальный деплой — **standalone Apps Script проект** на аккаунте `ignaton2001@gmail.com`, в аккаунте пока называется "Свин и загон backend" (название от первой версии; на работу не влияет, переименовывается вручную в редакторе Apps Script), привязан к таблице по `SPREADSHEET_ID` внутри `Code.gs` (не через Extensions-меню — так проще автоматизировать).
 
 - **Google Таблица**: https://docs.google.com/spreadsheets/d/1TQHdp3ylSog5pfmhIy1WEB0cG_YdSYB19V7FvnPlIWs/edit
   - Вкладка **Sales**: `Date | Amount | ROP` — one row per sale
@@ -102,9 +102,9 @@ game/
 ## Статус деплоя игры
 
 - Локальная разработка: `npm run dev` (или `dev-nolog`) из `game/`, либо `.claude/launch.json` → preview "sales-game-dev" (порт 8080).
-- **Задеплоено на GitHub Pages** (репозиторий https://github.com/KonturProject/svin-i-zagon, публичный). Игра: https://konturproject.github.io/svin-i-zagon/. Админка: https://konturproject.github.io/svin-i-zagon/admin.html. **Опубликована версия с драконом** (деплой 2026-09-20, коммит `aba4f65`).
+- **Задеплоено на GitHub Pages** (репозиторий https://github.com/KonturProject/sales-vs-dragon, публичный). Игра: https://konturproject.github.io/sales-vs-dragon/. Админка: https://konturproject.github.io/sales-vs-dragon/admin.html. **Опубликована версия с драконом** (деплой 2026-09-20, коммит `aba4f65`).
 - `game/package.json` → `npm run deploy` = `npm run build-nolog && gh-pages -d dist` (пакет `gh-pages` в devDependencies). Vite `base: './'` — пути в собранном HTML относительные, под-путь Pages не требует настройки.
-- GitHub Pages включился автоматически при первом пуше в ветку `gh-pages` (source: `gh-pages` branch, path `/`) — проверять через `gh api repos/KonturProject/svin-i-zagon/pages`.
+- GitHub Pages включился автоматически при первом пуше в ветку `gh-pages` (source: `gh-pages` branch, path `/`) — проверять через `gh api repos/KonturProject/sales-vs-dragon/pages`.
 - Авторизация: `gh auth status` под аккаунтом `KonturProject` (GitHub CLI установлен через winget).
 - Корневой `.gitignore` исключает `node_modules`, `dist`, `.claude/`, `.agents/`, `skills-lock.json`.
 

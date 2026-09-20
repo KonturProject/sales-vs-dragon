@@ -1,5 +1,5 @@
 /**
- * Backend for the "Свин и загон" sales mini-game.
+ * Backend for the "Отделы против дракона" (sales-vs-dragon) sales game.
  * Standalone script (not container-bound) — opens the spreadsheet explicitly by
  * ID via getSpreadsheet_(), so it works from script.google.com directly without
  * going through Extensions > Apps Script inside the sheet itself.
