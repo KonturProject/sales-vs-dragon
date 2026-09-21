@@ -47,6 +47,7 @@ export class PowerSaver {
         EventBus.on(GameEvents.MONEY_IN, wakeForEvent);
         EventBus.on(GameEvents.DRAGON_HEAD_LOST, wakeForEvent);
         EventBus.on(GameEvents.DRAGON_DEFEATED, wakeForEvent);
+        EventBus.on(GameEvents.ADMIN_COMMAND, wakeForEvent);
         game.canvas.addEventListener('pointerdown', () => this.wake(INPUT_AWAKE_MS));
     }
 

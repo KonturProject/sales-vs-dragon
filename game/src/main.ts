@@ -1,4 +1,5 @@
 import StartGame, { powerSaver } from './game/main';
+import type { PenScene } from './game/scenes/PenScene';
 import { EventBus, GameEvents } from './game/core/EventBus';
 import { GameState, StatusResponse } from './game/core/GameState';
 import { DataPollingService } from './game/systems/DataPollingService';
@@ -43,6 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
             audio: AudioSystem,
             /** `__debug.power()` -> current frame-rate mode and the rate frames are really drawn at. */
             power: () => powerSaver?.stats(),
+            /** `__debug.mood()` -> the idle-mood director: `.advance(ms)`, `.dropOne()`, `.wakeAll()`, `.state()`; `.dragon` growl via `__debug.growl()`. */
+            mood: () => (game.scene.getScene('PenScene') as PenScene).mood,
+            /** `__debug.command('hit', { rop: 'СР1', amount: 90000 })` — what the admin page's animation buttons cause. */
+            command: (type: string, args: Record<string, unknown> = {}) => EventBus.emit(GameEvents.ADMIN_COMMAND, { type, args }),
+            growl: () => ((game.scene.getScene('PenScene') as unknown as { dragon: { growl(): boolean } }).dragon).growl(),
         };
     }
 

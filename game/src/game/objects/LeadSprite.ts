@@ -25,6 +25,12 @@ export class LeadSprite extends GameObjects.Container implements Swayable {
         return !this.victoryTween;
     }
 
+    /** Horizontal extent on screen. */
+    span(): [number, number] {
+        const half = (this.sprite.width * this.baseScale) / 2;
+        return [this.x - half, this.x + half];
+    }
+
     private sparkleOrigin() {
         return {
             x: this.x,

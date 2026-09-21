@@ -4,6 +4,18 @@ export interface MoneyInPayload {
     heroSlug: string;
     ropName: string;
     delta: number;
+    /** A strike shown on request from the admin page — it is not a real sale, so it must not count as one (idle timer etc.). */
+    demo?: boolean;
+}
+
+/**
+ * An animation the admin page asked the displays to play (see apps-script/Code.gs, action 'command').
+ * Purely visual — handlers must not touch GameState.
+ *   hit {rop, amount} | fall {hero, mode} | wake | growl | confetti | celebrate
+ */
+export interface AdminCommandPayload {
+    type: string;
+    args: Record<string, unknown>;
 }
 
 export interface ProgressChangedPayload {
@@ -43,4 +55,5 @@ export const GameEvents = {
     FETCH_ERROR: 'data:fetch-error',
     DRAGON_HEAD_LOST: 'dragon:head-lost',
     DRAGON_DEFEATED: 'dragon:defeated',
+    ADMIN_COMMAND: 'admin:command',
 } as const;

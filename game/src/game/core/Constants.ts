@@ -36,6 +36,12 @@ export const DRAGON = {
     /** Stagger between successive head-loss animations when one poll crosses several day plans. */
     HEAD_LOSS_STAGGER_MS: 1100,
     HEAD_LOSS_DURATION_MS: 900,
+    /** Menacing growl: rear back, tremble, settle. From time to time on its own, more often while the team is idle. */
+    GROWL_MS: 1900,
+    GROWL_MIN_MS: 90_000,
+    GROWL_MAX_MS: 180_000,
+    GROWL_IDLE_MIN_MS: 40_000,
+    GROWL_IDLE_MAX_MS: 80_000,
 } as const;
 
 /** Phases of HeroSprite.playHit: wind-up, dash to the dragon, recoil on contact, walk back. */
@@ -78,6 +84,33 @@ export const HERO = {
     LEAD: { x: 118, y: 540, scale: 0.85 },
 } as const;
 
+/**
+ * Boredom when no sale comes in (measured across the whole team, not per department, so no
+ * single department is singled out): after FIRST_MS one random hero falls over or dozes off,
+ * then one more per STEP_MS, at most MAX_DOWN. Any sale wakes everybody. `?idle=<minutes>` in the
+ * page URL shrinks FIRST_MS/STEP_MS to that many minutes — to show the effect without waiting an hour.
+ */
+const IDLE_MINUTES_OVERRIDE = Number(new URLSearchParams(typeof location !== 'undefined' ? location.search : '').get('idle'));
+const IDLE_STEP_MS = IDLE_MINUTES_OVERRIDE > 0 ? IDLE_MINUTES_OVERRIDE * 60_000 : 60 * 60_000;
+
+export const IDLE = {
+    FIRST_MS: IDLE_STEP_MS,
+    STEP_MS: IDLE_STEP_MS,
+    MAX_DOWN: 4,
+    /** How often the idle time is evaluated (game time, so it does not run while the tab is hidden). */
+    CHECK_MS: Math.min(30_000, IDLE_STEP_MS / 4),
+    /** Chance per check, once a hero is due to drop, that it happens now — so it does not happen to the second. */
+    DROP_CHANCE: 0.4,
+    /** Share of the drops that are a full fall (the rest doze off on their feet). */
+    FALL_SHARE: 0.5,
+    /** At most this many heroes lie on the floor at once — the rows are tight, more of them would pile onto each other. The rest doze standing. */
+    MAX_LYING: 2,
+    WAKE_STAGGER_MS: 140,
+    /** A sleeper lets out a floating "Z" this often (the only movement while asleep — keeps the display in low-frame-rate idle). */
+    SNORE_MIN_MS: 25_000,
+    SNORE_MAX_MS: 40_000,
+} as const;
+
 export const HUD = {
     BAR_X: 32,
     BAR_Y: 22,
@@ -93,8 +126,19 @@ export const FX = {
 
 export const POLL = {
     INTERVAL_MS: 15000,
-    TIMEOUT_MS: 15000,
+    /**
+     * Longer than the poll interval on purpose: Apps Script answers in ~3 s typically, but roughly one
+     * request in ten takes 10–30 s (measured 2026-09-21). Giving up at 15 s turned each of those into a
+     * failed poll; DataPollingService never runs two polls at once, so a slow one just delays the next.
+     */
+    TIMEOUT_MS: 30000,
+    /** One failed poll in a row is normal noise and is not shown; from this many the HUD says "offline". */
+    OFFLINE_AFTER_FAILURES: 2,
     MAX_CONSECUTIVE_FAILURES: 5,
+    /** A command older than this when the display first sees it (it was offline) is not worth playing any more. */
+    COMMAND_MAX_AGE_MS: 120_000,
+    /** Gap between several commands that arrive in one poll, so they read one after another. */
+    COMMAND_STAGGER_MS: 700,
 } as const;
 
 export const HERO_SLUGS = [

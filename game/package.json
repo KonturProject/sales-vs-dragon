@@ -18,7 +18,9 @@
     "build": "node log.js build & vite build --config vite/config.prod.mjs",
     "dev-nolog": "vite --config vite/config.dev.mjs",
     "build-nolog": "vite build --config vite/config.prod.mjs",
-    "deploy": "npm run build-nolog && gh-pages -d dist"
+    "deploy": "npm run build-nolog && gh-pages -d dist",
+    "mock-backend": "node tools/mock-backend.mjs",
+    "test:backend": "node --test ../apps-script/test/backend.test.mjs"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",

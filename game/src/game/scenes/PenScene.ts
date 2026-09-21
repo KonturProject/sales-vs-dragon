@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import {
-    EventBus, GameEvents, MoneyInPayload, ProgressChangedPayload, DragonHeadLostPayload, DragonDefeatedPayload,
+    EventBus, GameEvents, MoneyInPayload, ProgressChangedPayload, DragonHeadLostPayload, DragonDefeatedPayload, AdminCommandPayload,
 } from '../core/EventBus';
 import { GameState } from '../core/GameState';
 import { fitCameraToGame } from '../core/Render';
@@ -10,6 +10,7 @@ import { DataPollingService } from '../systems/DataPollingService';
 import { Dragon } from '../objects/Dragon';
 import { HeroSprite } from '../objects/HeroSprite';
 import { LeadSprite } from '../objects/LeadSprite';
+import { IdleMood } from '../systems/IdleMood';
 import { emitFloatingAmount, startIdleSway } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 
@@ -25,6 +26,8 @@ export class PenScene extends Scene {
     private lead: LeadSprite | null = null;
     private hasAppliedFirstProgress = false;
     private hasPlayedVictory = false;
+    /** Falls asleep when nobody sells for a long time; makes the dragon growl (see systems/IdleMood.ts). */
+    mood!: IdleMood;
 
     constructor() {
         super('PenScene');
@@ -55,13 +58,16 @@ export class PenScene extends Scene {
         }
 
         startIdleSway(this, [...this.heroes.values(), ...(this.lead ? [this.lead] : [])]);
+        this.mood = new IdleMood(this, [...this.heroes.values()], this.dragon, this.lead ? [this.lead.span()] : []);
 
         EventBus.on(GameEvents.MONEY_IN, this.onMoneyIn, this);
         EventBus.on(GameEvents.PROGRESS_CHANGED, this.onProgressChanged, this);
         EventBus.on(GameEvents.DRAGON_HEAD_LOST, this.onDragonHeadLost, this);
         EventBus.on(GameEvents.DRAGON_DEFEATED, this.onDragonDefeated, this);
+        EventBus.on(GameEvents.ADMIN_COMMAND, this.onAdminCommand, this);
 
         this.events.once('shutdown', () => {
+            EventBus.off(GameEvents.ADMIN_COMMAND, this.onAdminCommand, this);
             EventBus.off(GameEvents.MONEY_IN, this.onMoneyIn, this);
             EventBus.off(GameEvents.PROGRESS_CHANGED, this.onProgressChanged, this);
             EventBus.off(GameEvents.DRAGON_HEAD_LOST, this.onDragonHeadLost, this);
@@ -97,6 +103,38 @@ export class PenScene extends Scene {
 
         // The branch lead isn't tied to one department — she cheers on every sale.
         this.time.delayedCall(HERO.IMPACT_MS, () => this.lead?.playCheer());
+    }
+
+    /**
+     * An animation requested from the admin page. Everything here is visual only — no GameState,
+     * no data. A `hit` goes through the normal MONEY_IN path (flagged `demo`, so it does not count as a sale).
+     */
+    private onAdminCommand(cmd: AdminCommandPayload) {
+        switch (cmd.type) {
+            case 'hit': {
+                const rop = String(cmd.args.rop ?? '');
+                const delta = Number(cmd.args.amount) || 50000;
+                EventBus.emit(GameEvents.MONEY_IN, {
+                    heroSlug: RosterConfig.heroSlugForRop(rop) ?? 'overflow', ropName: rop, delta, demo: true,
+                } satisfies MoneyInPayload);
+                break;
+            }
+            case 'fall':
+                this.mood.drop(String(cmd.args.hero ?? 'random'), String(cmd.args.mode ?? 'random'));
+                break;
+            case 'wake':
+                this.mood.wakeAll();
+                break;
+            case 'growl':
+                this.dragon.growl();
+                break;
+            case 'celebrate':
+                AudioSystem.playFanfare();
+                this.heroes.forEach(hero => { if (hero.canSway()) hero.playCelebrate(); });
+                this.lead?.playCheer();
+                break;
+            // 'confetti' is drawn by HUDScene (full-screen effect).
+        }
     }
 
     private onProgressChanged(payload: ProgressChangedPayload) {

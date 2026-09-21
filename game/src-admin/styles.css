@@ -28,7 +28,8 @@ body {
         var(--bg-deep);
     color: var(--text);
     font-family: 'Manrope', Arial, sans-serif;
-    overflow: hidden;
+    overflow-y: auto;
+    padding: 24px 12px;
     position: relative;
 }
 
@@ -41,7 +42,8 @@ body {
 
 .admin-card {
     position: relative;
-    width: 340px;
+    width: min(720px, 100%);
+    margin: auto;
     padding: 30px 28px 26px;
     background: var(--panel);
     backdrop-filter: blur(14px);
@@ -185,4 +187,233 @@ button:hover .btn-arrow {
 
 #status.ok {
     color: var(--green);
+}
+
+/* ---------------------------------------------------------------- panel */
+
+h2 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin: 22px 0 10px;
+}
+
+select {
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(6, 8, 16, 0.7);
+    color: var(--text);
+    font-family: 'Manrope', Arial, sans-serif;
+    font-size: 16px;
+    outline: none;
+}
+
+select:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 3px rgba(52, 216, 232, 0.15);
+}
+
+.optional {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    opacity: 0.7;
+}
+
+.hint {
+    margin: 14px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+button.tab-btn {
+    margin: 0;
+    padding: 9px 14px;
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-dim);
+    box-shadow: none;
+}
+
+button.tab-btn:hover {
+    color: var(--text);
+    transform: none;
+    box-shadow: none;
+}
+
+button.tab-btn.active {
+    background: linear-gradient(135deg, var(--cyan), var(--green));
+    color: #03151a;
+}
+
+button.ghost {
+    margin: 0;
+    padding: 9px 14px;
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    box-shadow: none;
+}
+
+button.ghost:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+button.logout {
+    margin-top: 22px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+    pointer-events: none;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.meta {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.chip {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(52, 216, 232, 0.08);
+    border: 1px solid rgba(52, 216, 232, 0.18);
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.chip strong {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.table-wrap {
+    max-height: 340px;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+}
+
+th {
+    position: sticky;
+    top: 0;
+    background: #10152a;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.inline-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.inline-field input,
+.inline-field select {
+    flex: 1;
+    min-width: 0;
+}
+
+.btn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+}
+
+button.anim-btn {
+    margin: 0;
+    padding: 12px 10px;
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    border: 1px solid rgba(52, 216, 232, 0.25);
+    box-shadow: none;
+}
+
+button.anim-btn:hover {
+    background: rgba(52, 216, 232, 0.16);
+    transform: none;
+    box-shadow: none;
+}
+
+/* ---------------------------------------------------- narrow screens */
+
+@media (max-width: 520px) {
+    body {
+        padding: 12px 8px;
+    }
+
+    .admin-card {
+        padding: 22px 16px 20px;
+    }
+
+    /* The sheet row number is the least useful column; dropping it keeps "Сумма" on screen without side-scrolling. */
+    #sales-table th:first-child,
+    #sales-table td:first-child {
+        display: none;
+    }
+
+    th, td {
+        padding: 8px 8px;
+        font-size: 13px;
+    }
+
+    .btn-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
 }

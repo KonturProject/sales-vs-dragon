@@ -1,5 +1,5 @@
 import { Display, GameObjects, Scene } from 'phaser';
-import { EventBus, GameEvents, ProgressChangedPayload, FetchErrorPayload, DragonHeadLostPayload, DragonDefeatedPayload, MoneyInPayload } from '../core/EventBus';
+import { EventBus, GameEvents, ProgressChangedPayload, FetchErrorPayload, DragonHeadLostPayload, DragonDefeatedPayload, MoneyInPayload, AdminCommandPayload } from '../core/EventBus';
 import { GameState } from '../core/GameState';
 import { fitCameraToGame } from '../core/Render';
 import { DAYS, DRAGON, GAME, HUD, HeroSlug, POLL } from '../core/Constants';
@@ -159,7 +159,16 @@ export class HUDScene extends Scene {
         };
         EventBus.on(GameEvents.DRAGON_HEAD_LOST, onHeadLost);
 
+        // Full-screen celebration on request from the admin page (visual only).
+        const onAdminCommand = (cmd: AdminCommandPayload) => {
+            if (cmd.type !== 'confetti' && cmd.type !== 'celebrate') return;
+            emitConfettiBurst(this, 120);
+            flashScreen(this, 0xffe89a, 0.3, 200, 2);
+        };
+        EventBus.on(GameEvents.ADMIN_COMMAND, onAdminCommand);
+
         this.events.once('shutdown', () => {
+            EventBus.off(GameEvents.ADMIN_COMMAND, onAdminCommand);
             EventBus.off(GameEvents.PROGRESS_CHANGED, handler);
             EventBus.off(GameEvents.DATA_UPDATED, onDataUpdated);
             EventBus.off(GameEvents.FETCH_ERROR, onFetchError);
@@ -177,7 +186,8 @@ export class HUDScene extends Scene {
     private renderStatus() {
         const minutesAgo = Math.floor((Date.now() - this.lastGoodAt) / 60000);
 
-        if (this.consecutiveFailures === 0) {
+        // A single missed poll is routine (Apps Script sometimes answers very slowly) and is not shown.
+        if (this.consecutiveFailures < POLL.OFFLINE_AFTER_FAILURES) {
             this.statusDot.setFillStyle(0x36e08a);
             this.statusText.setText('в эфире');
         } else {

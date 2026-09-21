@@ -5,6 +5,16 @@ export interface RopAmount {
     amount: number;
 }
 
+/** An admin "play this animation" request as the backend hands it to the displays. */
+export interface BackendCommand {
+    /** Rising counter — each display plays every id once. */
+    id: number;
+    type: string;
+    args: Record<string, unknown>;
+    /** Backend clock, ms. */
+    issuedAt: number;
+}
+
 export interface StatusResponse {
     ok: boolean;
     weekStart: string;
@@ -15,6 +25,10 @@ export interface StatusResponse {
     metersRemaining?: number;
     byRop: RopAmount[];
     lastUpdated: string;
+    /** Recent admin animation requests (absent on an older backend). */
+    commands?: BackendCommand[];
+    /** Backend clock, ms — compared with `issuedAt` so a display's own clock does not matter. */
+    serverNow?: number;
     error?: string;
 }
 

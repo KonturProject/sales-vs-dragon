@@ -13,12 +13,22 @@ const HEAD_LOSS_LEAD_MS = 600;
 
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 let consecutiveFailures = 0;
+/** A poll is still waiting for its answer — the next one must not start (two answers could arrive out of order). */
+let pollInFlight = false;
 let config: RuntimeConfig | null = null;
+/** Highest admin command id this display has already seen; null until the first poll (the baseline). */
+let lastCommandId: number | null = null;
 
 async function loadRuntimeConfig(): Promise<RuntimeConfig> {
     const res = await fetch('config.json', { cache: 'no-store' });
     if (!res.ok) throw new Error(`config.json fetch failed: ${res.status}`);
-    return res.json();
+    const loaded: RuntimeConfig = await res.json();
+    // Dev only: `?backend=http://localhost:8787/exec` points the game at the local mock backend (game/tools/mock-backend.mjs).
+    if (import.meta.env.DEV) {
+        const backend = new URLSearchParams(location.search).get('backend');
+        if (backend) return { appsScriptUrl: backend, useMock: false };
+    }
+    return loaded;
 }
 
 async function fetchStatus(): Promise<StatusResponse> {
@@ -101,12 +111,44 @@ function diffAndEmit(previous: Record<string, number> | null, status: StatusResp
     }
 }
 
+/**
+ * Plays the animations the admin page asked for. Like the money diff, the first poll only sets the
+ * baseline: commands issued before this page opened are history, not something to replay on every reload.
+ */
+function dispatchCommands(status: StatusResponse) {
+    const commands = [...(status.commands ?? [])].sort((a, b) => a.id - b.id);
+    const newest = commands.length > 0 ? commands[commands.length - 1].id : 0;
+
+    if (lastCommandId === null) {
+        lastCommandId = newest;
+        return;
+    }
+    // The ids only ever grow. If the newest one is *lower* than what this display has seen, the backend's
+    // counter was reset (its properties were cleared): start over from there, or every new command would be
+    // ignored until the counter caught up again.
+    if (commands.length > 0 && newest < lastCommandId) lastCommandId = newest - commands.length;
+
+    let staggerIndex = 0;
+    for (const command of commands) {
+        if (command.id <= lastCommandId) continue;
+        // Age by the backend's own clock, so a wrong clock on this computer cannot swallow (or replay) commands.
+        const ageMs = status.serverNow !== undefined ? status.serverNow - command.issuedAt : 0;
+        if (ageMs > POLL.COMMAND_MAX_AGE_MS) continue;
+        const payload = { type: command.type, args: command.args ?? {} };
+        setTimeout(() => EventBus.emit(GameEvents.ADMIN_COMMAND, payload), staggerIndex++ * POLL.COMMAND_STAGGER_MS);
+    }
+    lastCommandId = Math.max(lastCommandId, newest);
+}
+
 async function tick() {
+    if (pollInFlight) return;
+    pollInFlight = true;
     try {
         const status = await fetchStatus();
         const previous = GameState.applyStatus(status);
         consecutiveFailures = 0;
         diffAndEmit(previous, status);
+        dispatchCommands(status);
     } catch (err) {
         console.error('[DataPollingService] tick failed:', err);
         consecutiveFailures++;
@@ -114,6 +156,8 @@ async function tick() {
         EventBus.emit(GameEvents.FETCH_ERROR, { consecutiveFailures, error: String(err) });
         // Keep polling regardless of failure count — a long-lived kiosk tab should
         // recover on its own once connectivity/the endpoint comes back.
+    } finally {
+        pollInFlight = false;
     }
 }
 

@@ -14,9 +14,10 @@ claude first pr/                        <- корень (git-репозитор�
 │   ├── tech.md                          технические решения и их обоснование (пайплайн ассетов, механика, Fooocus)
 │   └── MAP.md                           ты здесь
 ├── apps-script/                         исходник бэкенда (копия того, что реально лежит в Apps Script)
-│   ├── Code.gs
+│   ├── Code.gs                          API: публичный GET (итоги + команды) и POST по action (login/setPlan/listSales/addSale/changePin/command)
 │   ├── appsscript.json
-│   └── README.md                        инструкция по ручному деплою
+│   ├── README.md                        инструкция по ручному деплою + таблица API
+│   └── test/                            gas-harness.mjs (Code.gs на имитации Google) и backend.test.mjs (20 тестов: `npm run test:backend`)
 ├── game/                                Vite+Phaser+TS проект — вся игра
 ├── .claude/skills/                      установленные скиллы game-creator, caveman и др. — исключены из git
 ├── .agents/skills/                      установленные скиллы (дубликат для другого раннера) — исключены из git
@@ -30,7 +31,7 @@ Fooocus (генератор картинок) лежит **вне** репози
 ```
 game/
 ├── index.html                           точка входа игры (canvas)
-├── admin.html                           точка входа админки (PIN + форма плана)
+├── admin.html                           точка входа админки: вход по PIN, вкладки «План / Таблица / Внести оплату / Анимации / PIN-код»
 ├── public/
 │   ├── config.json                      {appsScriptUrl, useMock} — читается в рантайме, правится без пересборки
 │   ├── assets/
@@ -62,18 +63,21 @@ game/
 │       ├── systems/
 │       │   ├── DataPollingService.ts    fetch раз в 15с, diff по РОПам → MONEY_IN; расчёт голов → DRAGON_HEAD_LOST / DRAGON_DEFEATED
 │       │   ├── RosterConfig.ts          heroSlugForRop(), ropNameForSlug(), heroDef() — обёртка над config/*.json
-│       │   ├── Audio.ts                 AudioSystem — процедурный звук (удар, рык при потере головы, фанфара), mute в localStorage
+│       │   ├── Audio.ts                 AudioSystem — процедурный звук (удар, рык при потере головы, фанфара, падение героя, рычание дракона), mute в localStorage
+│       │   ├── IdleMood.ts              режиссёр простоя: нет продаж час → герои падают/засыпают, продажа будит; рычание дракона по расписанию
 │       │   └── Fx.ts                    emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst, flashScreen, startIdleSway/addIdleFlicker
 │       └── config/
 │           ├── heroRoster.json          ростер: slug/sprite/color/lead/hits — `hits` = число поз удара (6 героев + Круэлла)
 │           └── ropMapping.json          СР1→lion, СР2→scrooge, СР3→grinch, СР5→yoda, СР6→neznaika, СР9→minion
 ├── src-admin/
-│   ├── main.ts                          логика админки: PIN-форма → форма плана → POST с text/plain (обход CORS preflight)
+│   ├── main.ts                          логика админки: вход (login), вкладки, чтение листа Sales, добавление оплаты, кнопки анимаций (команды), смена PIN
+│   ├── api.ts                           callBackend(action, pin, payload): POST text/plain с PIN в теле, BackendError; в dev — подмена адреса ?backend=
 │   └── styles.css                       киберпанк-стиль карточки
 ├── assets-source/                       ИСХОДНИКИ ассетов, не публикуются в игру напрямую
 │   ├── raw-pixel/                       прежний арт (героини/свин/Валькирия) — больше не используется, лежит как архив
 │   └── character-refs/                  ТЕКУЩИЙ арт (Fooocus + доработка в Photoshop, прозрачный PNG): `СР1 - Лев`, `СР2 - Скрудж`, `СР3 - Гринч`, `СР 5 - йода`, `СР6 - Незнайка с деньгами`, `СР9 - миньон` (персонаж + Анимация 1..3), `Дракон/` (6 состояний + гора золота), `Круэлла …/`, `фон.jfif` (пещера)
 ├── tools/build-sprites.py               character-refs → public/assets/sprites (обрезка, единый масштаб поз, даунскейл ×2, совмещение состояний дракона, кадрирование фона); запуск: `python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F]`
+├── tools/mock-backend.mjs               локальный бэкенд: настоящий Code.gs на имитации Google (`npm run mock-backend`, :8787, PIN 1234)
 ├── vite/config.{dev,prod}.mjs           prod-конфиг собирает ДВЕ точки входа (index.html + admin.html)
 ├── package.json                         scripts: dev, build, dev-nolog, build-nolog, deploy (gh-pages)
 └── tsconfig.json

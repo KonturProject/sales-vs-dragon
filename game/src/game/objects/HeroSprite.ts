@@ -1,7 +1,8 @@
 import { Display, GameObjects, Scene } from 'phaser';
 import { HeroDef } from '../systems/RosterConfig';
-import { FX, HERO } from '../core/Constants';
+import { FX, GAME, HERO } from '../core/Constants';
 import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } from '../systems/Fx';
+import { AudioSystem } from '../systems/Audio';
 
 /**
  * A department mascot. The sprite is anchored at its feet (bottom-center) and
@@ -12,10 +13,17 @@ import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } f
  * Standing, the hero never moves vertically (no bob) — it stands on the floor.
  */
 export class HeroSprite extends GameObjects.Container implements Swayable {
+    readonly slug: string;
     private sprite: GameObjects.Image;
     private baseX: number;
+    private baseY: number;
     private baseScale: number;
     private busy = false;
+    /** Standing up, keeled over on the floor, or dozing on its feet (see IdleMood). */
+    private posture: 'standing' | 'down' | 'dozing' = 'standing';
+    /** Which way it fell / leans: +1 toward the dragon (right), -1 away from it. */
+    private lean: 1 | -1 = -1;
+    private zzz: GameObjects.Text | null = null;
     private tintColor: number;
     private defaultTexture: string;
     private hitPoses: string[];
@@ -23,7 +31,9 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
 
     constructor(scene: Scene, x: number, y: number, def: HeroDef, scaleMul = 1) {
         super(scene, x, y);
+        this.slug = def.slug;
         this.baseX = x;
+        this.baseY = y;
         this.baseScale = HERO.TEXTURE_SCALE * scaleMul;
         this.tintColor = Display.Color.HexStringToColor(def.color).color;
         this.defaultTexture = def.sprite;
@@ -44,7 +54,164 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
     }
 
     canSway() {
-        return !this.busy;
+        return !this.busy && this.posture === 'standing';
+    }
+
+    get isAsleep() {
+        return this.posture !== 'standing';
+    }
+
+    /** Keeled over on the floor (takes up room, unlike dozing on its feet). */
+    get isLying() {
+        return this.posture === 'down';
+    }
+
+    /** Horizontal extent it covers right now (standing, or lying if it has fallen) — IdleMood uses it to pick a fall direction that lands on nobody. */
+    coveredSpan(): [number, number] {
+        if (this.posture === 'down') return this.lyingSpan(this.lean);
+        const half = (this.sprite.width * this.baseScale) / 2;
+        return [this.baseX - half, this.baseX + half];
+    }
+
+    lyingSpan(dir: 1 | -1): [number, number] {
+        const length = this.sprite.height * this.baseScale;
+        return dir > 0 ? [this.baseX, this.baseX + length] : [this.baseX - length, this.baseX];
+    }
+
+    /**
+     * Keel over: a stagger, a topple to the floor about the feet (rotate ±90°), a bounce.
+     * The body is lifted by half its thickness so it lies *on* the floor line instead of
+     * sinking a half-width below it. Static afterwards (a "Zzz" label), no endless motion.
+     */
+    fallOver(dir: 1 | -1): boolean {
+        if (this.busy || this.posture !== 'standing') return false;
+        this.busy = true;
+        this.posture = 'down';
+        this.lean = dir;
+        this.scene.tweens.killTweensOf(this);
+
+        const lying = dir * 90;
+        const halfThickness = (this.sprite.width * this.baseScale) / 2;
+        this.scene.tweens.chain({
+            targets: this,
+            tweens: [
+                { angle: -dir * 5, duration: 220, ease: 'Sine.easeOut' },
+                { angle: dir * 3, duration: 240, ease: 'Sine.easeInOut' },
+                {
+                    angle: lying, y: this.baseY - halfThickness, duration: 400, ease: 'Quad.easeIn',
+                    onComplete: () => {
+                        const [from, to] = this.lyingSpan(dir);
+                        emitBurst(this.scene, (from + to) / 2, this.baseY - 6, 0xcfc6b8, 9);
+                        AudioSystem.playFall();
+                    },
+                },
+                { angle: lying - dir * 6, duration: 110, ease: 'Sine.easeOut' },
+                { angle: lying, duration: 160, ease: 'Bounce.easeOut' },
+            ],
+            onComplete: () => {
+                this.busy = false;
+                this.showZzz();
+            },
+        });
+        return true;
+    }
+
+    /** Doze off on its feet: slowly slumps to one side with its head drooping. */
+    doze(dir: 1 | -1): boolean {
+        if (this.busy || this.posture !== 'standing') return false;
+        this.busy = true;
+        this.posture = 'dozing';
+        this.lean = dir;
+        this.scene.tweens.killTweensOf(this);
+
+        const s = this.baseScale;
+        this.scene.tweens.chain({
+            targets: this,
+            tweens: [
+                { angle: dir * 9, scaleX: s * 1.02, scaleY: s * 0.92, duration: 1100, ease: 'Sine.easeInOut' },
+                { angle: dir * 7, duration: 500, ease: 'Sine.easeInOut' },
+            ],
+            onComplete: () => {
+                this.busy = false;
+                this.showZzz();
+            },
+        });
+        return true;
+    }
+
+    /** Get back on its feet with a small squash-and-stretch pop. (Mid-fall/mid-wake it snaps up instead.) */
+    wakeUp() {
+        if (this.posture === 'standing') return;
+        if (this.busy) {
+            this.wakeInstant();
+            return;
+        }
+        this.busy = true;
+        this.clearZzz();
+        const s = this.baseScale;
+        this.scene.tweens.chain({
+            targets: this,
+            tweens: [
+                { angle: 0, y: this.baseY, scaleX: s * 0.94, scaleY: s * 1.06, duration: 320, ease: 'Back.easeOut' },
+                { scaleX: s, scaleY: s, duration: 160, ease: 'Sine.easeOut' },
+            ],
+            onComplete: () => {
+                this.posture = 'standing';
+                this.busy = false;
+            },
+        });
+        emitSparkles(this.scene, this.baseX, this.baseY - this.sprite.height * s * 0.5, this.sprite.width * s, 4);
+    }
+
+    /** Straight back to standing, no animation — used when a sale needs this hero right now. */
+    wakeInstant() {
+        this.scene.tweens.killTweensOf(this);
+        this.clearZzz();
+        this.setAngle(0).setPosition(this.baseX, this.baseY).setScale(this.baseScale);
+        this.posture = 'standing';
+        this.busy = false;
+    }
+
+    /** A "Z" drifts up from a sleeper — a rare, short animation (see IDLE.SNORE_*). */
+    snore() {
+        if (!this.zzz) return;
+        const z = this.scene.add.text(this.zzz.x, this.zzz.y, 'Z', {
+            fontFamily: 'Arial Black, Arial, sans-serif',
+            fontSize: '20px',
+            resolution: GAME.RENDER_SCALE,
+            color: '#cfe3f5',
+        }).setOrigin(0.5).setDepth(1400).setStroke('#0d1220', 3);
+        this.scene.tweens.add({
+            targets: z,
+            y: z.y - 38,
+            x: z.x + this.lean * 8,
+            alpha: 0,
+            scale: 1.35,
+            duration: 1500,
+            ease: 'Sine.easeOut',
+            onComplete: () => z.destroy(),
+        });
+    }
+
+    /** Static "Zzz" above the sleeper — costs nothing to keep on screen (no tween). */
+    private showZzz() {
+        this.clearZzz();
+        const h = this.sprite.height * this.baseScale;
+        const w = this.sprite.width * this.baseScale;
+        const [x, y] = this.posture === 'down'
+            ? [this.baseX + this.lean * h * 0.5, this.baseY - w - 14]
+            : [this.baseX + this.lean * h * 0.16, this.baseY - h * 0.92 - 8];
+        this.zzz = this.scene.add.text(x, y, 'Zzz', {
+            fontFamily: 'Arial Black, Arial, sans-serif',
+            fontSize: '17px',
+            resolution: GAME.RENDER_SCALE,
+            color: '#cfe3f5',
+        }).setOrigin(0.5).setDepth(1400).setStroke('#0d1220', 3).setAlpha(0.92);
+    }
+
+    private clearZzz() {
+        this.zzz?.destroy();
+        this.zzz = null;
     }
 
     private setPose(textureKey: string) {
@@ -62,6 +229,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
      * reads better than running everyone down to one spot in front of the gold).
      */
     playHit(delta = 0) {
+        if (this.posture !== 'standing') this.wakeInstant(); // a sale needs this hero right now
         if (this.busy) return;
         this.busy = true;
         // The idle sway may be mid-tilt; the chain below takes over angle/scale.
@@ -140,6 +308,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
      * touched, so the feet stay planted on the floor.
      */
     playCelebrate() {
+        if (this.posture !== 'standing') this.wakeInstant();
         const s = this.baseScale;
         this.scene.tweens.chain({
             targets: this,
