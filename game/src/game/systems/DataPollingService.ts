@@ -39,15 +39,61 @@ async function fetchStatus(): Promise<StatusResponse> {
         return res.json();
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), POLL.TIMEOUT_MS);
-    try {
-        const res = await fetch(config.appsScriptUrl, { signal: controller.signal });
-        if (!res.ok) throw new Error(`status fetch failed: ${res.status}`);
-        return res.json();
-    } finally {
-        clearTimeout(timeout);
-    }
+    return fetchWithHedge(config.appsScriptUrl);
+}
+
+/**
+ * GET the status with a safety net for Apps Script's slow tail: a second request joins in when the first is
+ * slow (POLL.HEDGE_AFTER_MS) or fails, the first success wins and the other is abandoned. Rejects only when
+ * every attempt (POLL.MAX_ATTEMPTS) has failed.
+ */
+function fetchWithHedge(url: string): Promise<StatusResponse> {
+    return new Promise<StatusResponse>((resolve, reject) => {
+        const controllers: AbortController[] = [];
+        let pending = 0;
+        let settled = false;
+        let lastError: unknown = new Error('no attempt made');
+        let hedgeTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const finish = () => {
+            settled = true;
+            if (hedgeTimer !== null) clearTimeout(hedgeTimer);
+            controllers.forEach(c => c.abort()); // the loser (and the finished winner) — nothing left to wait for
+        };
+
+        const launch = () => {
+            if (settled || controllers.length >= POLL.MAX_ATTEMPTS) return;
+            const controller = new AbortController();
+            controllers.push(controller);
+            pending++;
+            const timeout = setTimeout(() => controller.abort(), POLL.TIMEOUT_MS);
+
+            fetch(url, { signal: controller.signal })
+                .then(res => {
+                    if (!res.ok) throw new Error(`status fetch failed: ${res.status}`);
+                    return res.json() as Promise<StatusResponse>;
+                })
+                .then(status => {
+                    if (settled) return;
+                    finish();
+                    resolve(status);
+                })
+                .catch(err => {
+                    pending--;
+                    if (settled) return;
+                    lastError = err;
+                    if (controllers.length < POLL.MAX_ATTEMPTS) launch(); // failed outright: retry now instead of waiting for the hedge timer
+                    else if (pending === 0) {
+                        finish();
+                        reject(lastError);
+                    }
+                })
+                .finally(() => clearTimeout(timeout));
+        };
+
+        hedgeTimer = setTimeout(launch, POLL.HEDGE_AFTER_MS);
+        launch();
+    });
 }
 
 function diffAndEmit(previous: Record<string, number> | null, status: StatusResponse) {

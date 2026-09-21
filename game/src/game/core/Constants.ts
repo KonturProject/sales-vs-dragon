@@ -132,6 +132,14 @@ export const POLL = {
      * failed poll; DataPollingService never runs two polls at once, so a slow one just delays the next.
      */
     TIMEOUT_MS: 30000,
+    /**
+     * If the status request has not answered after this long — a cold Apps Script instance can take 10–40 s,
+     * which left the screen at zeros for a minute after opening the page — a second identical request is
+     * started and whichever answers first wins. (A request that fails outright is retried at once.) At most
+     * MAX_ATTEMPTS per poll, so the extra load only exists while the backend is being slow.
+     */
+    HEDGE_AFTER_MS: 6000,
+    MAX_ATTEMPTS: 2,
     /** One failed poll in a row is normal noise and is not shown; from this many the HUD says "offline". */
     OFFLINE_AFTER_FAILURES: 2,
     MAX_CONSECUTIVE_FAILURES: 5,
