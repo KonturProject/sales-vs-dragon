@@ -1,14 +1,17 @@
+import { QUALITY } from './Quality';
+
 export const GAME = {
     /** Logical size — every coordinate in the code is in these units. */
     WIDTH: 1280,
     HEIGHT: 720,
     /**
      * The canvas buffer is RENDER_SCALE × the logical size (camera zoom, see
-     * core/Render.ts) and text is rasterised at the same factor, so text and the 2×
-     * hero textures land on buffer pixels 1:1 instead of being stretched from a 720p
-     * buffer by the browser (that made HUD text blurry). Set to 1 to go back.
+     * core/Render.ts) and text is rasterised at the same factor, so text lands on
+     * buffer pixels 1:1 instead of being stretched from a 720p buffer by the
+     * browser (that made HUD text blurry). Chosen per device at load: it follows the
+     * real on-screen size, capped at 2 (1.5 on weak machines) — see core/Quality.ts.
      */
-    RENDER_SCALE: 2,
+    RENDER_SCALE: QUALITY.renderScale,
 } as const;
 
 /** Weekly plan is split into this many equal daily plans; each one crossed costs the dragon a head. */

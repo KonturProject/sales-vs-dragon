@@ -197,6 +197,7 @@ export class HUDScene extends Scene {
 
     private render(payload: ProgressChangedPayload) {
         const target = Math.min(1, Math.max(0, payload.ratio));
+        const isFirstRender = !this.hasBaseline; // hasBaseline is flipped below; the label must be drawn once even for 0 / 0
 
         // Regrown heads (new week / raised plan) show immediately; lost heads
         // are shown by the delayed head-loss handler so the counter matches the art.
@@ -204,24 +205,30 @@ export class HUDScene extends Scene {
         this.hasBaseline = true;
         if (payload.ratio < 1) this.hideVictoryBanner();
 
-        this.tweens.add({
-            targets: this,
-            displayedRatio: target,
-            duration: 500,
-            ease: 'Sine.easeOut',
-            onUpdate: () => this.drawFill(this.displayedRatio),
-        });
+        // Every poll lands here, changed data or not. Starting a tween for an
+        // unchanged value would wake the renderer (PowerSaver) for nothing.
+        if (isFirstRender || this.displayedRatio !== target) {
+            this.tweens.add({
+                targets: this,
+                displayedRatio: target,
+                duration: 500,
+                ease: 'Sine.easeOut',
+                onUpdate: () => this.drawFill(this.displayedRatio),
+            });
+        }
 
         // Odometer-style count-up instead of snapping the number instantly —
         // same tween-a-plain-property trick already used for displayedRatio.
-        this.tweens.add({
-            targets: this,
-            displayedTotal: payload.totalThisWeek,
-            displayedPlan: payload.plan,
-            duration: 500,
-            ease: 'Sine.easeOut',
-            onUpdate: () => this.drawLabel(),
-        });
+        if (isFirstRender || this.displayedTotal !== payload.totalThisWeek || this.displayedPlan !== payload.plan) {
+            this.tweens.add({
+                targets: this,
+                displayedTotal: payload.totalThisWeek,
+                displayedPlan: payload.plan,
+                duration: 500,
+                ease: 'Sine.easeOut',
+                onUpdate: () => this.drawLabel(),
+            });
+        }
     }
 
     private shownHeads = DAYS;

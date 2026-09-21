@@ -1,7 +1,7 @@
 import { Display, GameObjects, Scene } from 'phaser';
 import { HeroDef } from '../systems/RosterConfig';
 import { FX, HERO } from '../core/Constants';
-import { emitBurst, emitSparkles, addIdleSway, emitShockwaveRing, emitComicText } from '../systems/Fx';
+import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } from '../systems/Fx';
 
 /**
  * A department mascot. The sprite is anchored at its feet (bottom-center) and
@@ -11,7 +11,7 @@ import { emitBurst, emitSparkles, addIdleSway, emitShockwaveRing, emitComicText 
  *
  * Standing, the hero never moves vertically (no bob) — it stands on the floor.
  */
-export class HeroSprite extends GameObjects.Container {
+export class HeroSprite extends GameObjects.Container implements Swayable {
     private sprite: GameObjects.Image;
     private baseX: number;
     private baseScale: number;
@@ -41,8 +41,10 @@ export class HeroSprite extends GameObjects.Container {
         this.setScale(this.baseScale);
 
         scene.add.existing(this);
+    }
 
-        addIdleSway(scene, this, () => !this.busy);
+    canSway() {
+        return !this.busy;
     }
 
     private setPose(textureKey: string) {

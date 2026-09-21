@@ -70,14 +70,18 @@ export class Leaderboard extends GameObjects.Container {
             const entry = this.rows.get(slug);
             if (!entry) return;
 
+            // Unchanged rank/amount (most polls) => no tween and no text redraw, so an idle display stays idle.
             const targetY = PANEL_PADDING + rank * ROW_HEIGHT;
-            this.scene.tweens.add({
-                targets: entry.row,
-                y: targetY,
-                duration: 400,
-                ease: 'Sine.easeInOut',
-            });
-            entry.amountText.setText(`${Math.round(amounts.get(slug) ?? 0).toLocaleString('ru-RU')} ₽`);
+            if (entry.row.y !== targetY) {
+                this.scene.tweens.add({
+                    targets: entry.row,
+                    y: targetY,
+                    duration: 400,
+                    ease: 'Sine.easeInOut',
+                });
+            }
+            const amountLabel = `${Math.round(amounts.get(slug) ?? 0).toLocaleString('ru-RU')} ₽`;
+            if (entry.amountText.text !== amountLabel) entry.amountText.setText(amountLabel);
         });
     }
 }

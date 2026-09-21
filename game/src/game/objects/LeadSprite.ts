@@ -1,13 +1,13 @@
 import { GameObjects, Scene, Tweens } from 'phaser';
 import { HERO } from '../core/Constants';
-import { emitSparkles, addIdleSway } from '../systems/Fx';
+import { emitSparkles, Swayable } from '../systems/Fx';
 
 /**
  * The branch lead (Cruella). Not tied to any department: she stands apart from
  * the fighters, never throws a punch, cheers on every sale and celebrates the
  * victory. Has a single pose, so all reactions are code-driven (scale/sparkles).
  */
-export class LeadSprite extends GameObjects.Container {
+export class LeadSprite extends GameObjects.Container implements Swayable {
     private sprite: GameObjects.Image;
     private victoryTween?: Tweens.Tween;
     private baseScale: number;
@@ -19,7 +19,10 @@ export class LeadSprite extends GameObjects.Container {
         this.add(this.sprite);
         this.setScale(this.baseScale);
         scene.add.existing(this);
-        addIdleSway(scene, this, () => !this.victoryTween);
+    }
+
+    canSway() {
+        return !this.victoryTween;
     }
 
     private sparkleOrigin() {

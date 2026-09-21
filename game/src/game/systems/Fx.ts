@@ -136,22 +136,37 @@ export function emitFloatingAmount(scene: Scene, x: number, y: number, amount: n
     return t;
 }
 
+export interface Swayable {
+    angle: number;
+    /** False while the character is busy (mid-strike, victory pose) — it is skipped this round. */
+    canSway(): boolean;
+}
+
 /**
- * Rare idle sway so standing art doesn't read as a frozen photo: a small tilt
- * about the feet every 20–30 s. Only `angle` changes — the feet never leave the
- * floor (an up/down bob was removed because the characters looked like they hovered).
+ * Rare idle sway so standing art doesn't read as a frozen photo: every 10–16 s two or
+ * three random characters tilt a little about their feet, a fraction of a second apart.
+ * Only `angle` changes — the feet never leave the floor (an up/down bob was removed
+ * because the characters looked like they hovered).
+ *
+ * One shared schedule instead of a timer per character on purpose: each sway is an
+ * animation, and animations make the game render at its full frame rate (PowerSaver);
+ * seven independent timers kept it out of the low-rate idle mode about a quarter of the time.
  */
-export function addIdleSway(scene: Scene, target: { angle: number }, canPlay: () => boolean = () => true) {
-    const schedule = () => scene.time.delayedCall(20000 + Math.random() * 10000, () => {
-        if (canPlay()) {
-            scene.tweens.chain({
-                targets: target,
-                tweens: [
-                    { angle: -6, duration: 140, ease: 'Quad.easeOut' },
-                    { angle: 0, duration: 260, ease: 'Sine.easeOut' },
-                ],
+export function startIdleSway(scene: Scene, sprites: Swayable[]) {
+    const schedule = () => scene.time.delayedCall(10000 + Math.random() * 6000, () => {
+        const ready = sprites.filter(s => s.canSway()).sort(() => Math.random() - 0.5);
+        ready.slice(0, 2 + Math.floor(Math.random() * 2)).forEach(sprite => {
+            scene.time.delayedCall(Math.random() * 500, () => {
+                if (!sprite.canSway()) return;
+                scene.tweens.chain({
+                    targets: sprite,
+                    tweens: [
+                        { angle: -6, duration: 140, ease: 'Quad.easeOut' },
+                        { angle: 0, duration: 260, ease: 'Sine.easeOut' },
+                    ],
+                });
             });
-        }
+        });
         schedule();
     });
     schedule();

@@ -10,7 +10,7 @@ import { DataPollingService } from '../systems/DataPollingService';
 import { Dragon } from '../objects/Dragon';
 import { HeroSprite } from '../objects/HeroSprite';
 import { LeadSprite } from '../objects/LeadSprite';
-import { emitFloatingAmount } from '../systems/Fx';
+import { emitFloatingAmount, startIdleSway } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 
 /**
@@ -53,6 +53,8 @@ export class PenScene extends Scene {
             this.lead = new LeadSprite(this, HERO.LEAD.x, HERO.LEAD.y, leadDef.sprite, HERO.LEAD.scale);
             this.lead.setDepth(HERO.LEAD.y);
         }
+
+        startIdleSway(this, [...this.heroes.values(), ...(this.lead ? [this.lead] : [])]);
 
         EventBus.on(GameEvents.MONEY_IN, this.onMoneyIn, this);
         EventBus.on(GameEvents.PROGRESS_CHANGED, this.onProgressChanged, this);

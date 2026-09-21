@@ -1,4 +1,4 @@
-import StartGame from './game/main';
+import StartGame, { powerSaver } from './game/main';
 import { EventBus, GameEvents } from './game/core/EventBus';
 import { GameState, StatusResponse } from './game/core/GameState';
 import { DataPollingService } from './game/systems/DataPollingService';
@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
             /** `__debug.poller.stop()` freezes real polling so injected states aren't overwritten every 15s. */
             poller: DataPollingService,
             audio: AudioSystem,
+            /** `__debug.power()` -> current frame-rate mode and the rate frames are really drawn at. */
+            power: () => powerSaver?.stats(),
         };
     }
 

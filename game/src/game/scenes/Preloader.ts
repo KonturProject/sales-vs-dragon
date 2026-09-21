@@ -1,7 +1,10 @@
-import { Scene, Display, Loader } from 'phaser';
+import { Scene, Display, Loader, Textures } from 'phaser';
 import { RosterConfig } from '../systems/RosterConfig';
 import { DRAGON, GAME } from '../core/Constants';
 import { fitCameraToGame } from '../core/Render';
+
+/** Character, dragon, mountain and background textures (everything except generated text canvases). */
+const SMOOTH_TEXTURE_KEY = /^(hero_|lead_|dragon_|gold_mountain|bg_cave)/;
 
 /**
  * Loads the real cropped sprites from public/assets/sprites/. Any file that
@@ -36,6 +39,13 @@ export class Preloader extends Scene {
     }
 
     create() {
+        // The sprite art is painted and resampled, not true pixel art. `pixelArt: true` would sample it
+        // with NEAREST, which at a non-integer render scale (1.25×, 1.5× — see core/Quality.ts) leaves
+        // jagged, uneven edges; smooth filtering looks the same at 1:1 and better everywhere else.
+        for (const key of this.textures.getTextureKeys()) {
+            if (SMOOTH_TEXTURE_KEY.test(key)) this.textures.get(key).setFilter(Textures.FilterMode.LINEAR);
+        }
+
         this.scene.start('PenScene');
         this.scene.launch('HUDScene');
     }

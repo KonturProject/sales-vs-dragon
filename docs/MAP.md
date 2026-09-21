@@ -41,10 +41,12 @@ game/
 ├── src/
 │   ├── main.ts                          bootstrap игры + dev-хук window.__debug (только import.meta.env.DEV)
 │   └── game/
-│       ├── main.ts                      Phaser.Game config: pixelArt:true, roundPixels:true, буфер 2560×1440 (RENDER_SCALE 2), список сцен
+│       ├── main.ts                      Phaser.Game config: pixelArt:true, roundPixels:true, буфер = 1280·scale × 720·scale (scale из Quality.ts), fps.limit, PowerSaver, список сцен
 │       ├── core/
 │       │   ├── Constants.ts             ВСЕ магические числа: GAME (+RENDER_SCALE), DAYS, DRAGON, HERO (слоты, фазы удара, STRIKE_FRONT_X), HUD, FX, POLL, HERO_SLUGS
 │       │   ├── Render.ts                fitCameraToGame(scene): зум камеры ×RENDER_SCALE — вызывать первой строкой в каждой сцене
+│       │   ├── Quality.ts               профиль качества на загрузке: tier low/high, масштаб буфера, частоты кадров; URL-параметры ?quality ?scale ?fps ?idlefps
+│       │   ├── PowerSaver.ts            частота кадров на лету: active / ambient / idle (см. tech.md «Производительность»)
 │       │   ├── EventBus.ts              Events.EventEmitter singleton + типы событий (MONEY_IN, PROGRESS_CHANGED, DRAGON_HEAD_LOST, DRAGON_DEFEATED, DATA_UPDATED, FETCH_ERROR)
 │       │   └── GameState.ts             plan/totalThisWeek/byRop/ratio/headsRemaining/lastHeads/dragonDefeated — источник истины для UI
 │       ├── scenes/
@@ -61,7 +63,7 @@ game/
 │       │   ├── DataPollingService.ts    fetch раз в 15с, diff по РОПам → MONEY_IN; расчёт голов → DRAGON_HEAD_LOST / DRAGON_DEFEATED
 │       │   ├── RosterConfig.ts          heroSlugForRop(), ropNameForSlug(), heroDef() — обёртка над config/*.json
 │       │   ├── Audio.ts                 AudioSystem — процедурный звук (удар, рык при потере головы, фанфара), mute в localStorage
-│       │   └── Fx.ts                    emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst, flashScreen, addIdleSway/Flicker
+│       │   └── Fx.ts                    emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst, flashScreen, startIdleSway/addIdleFlicker
 │       └── config/
 │           ├── heroRoster.json          ростер: slug/sprite/color/lead/hits — `hits` = число поз удара (6 героев + Круэлла)
 │           └── ropMapping.json          СР1→lion, СР2→scrooge, СР3→grinch, СР5→yoda, СР6→neznaika, СР9→minion
