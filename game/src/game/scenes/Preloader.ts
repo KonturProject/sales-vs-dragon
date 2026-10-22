@@ -1,10 +1,11 @@
 import { Scene, Display, Loader, Textures } from 'phaser';
 import { RosterConfig } from '../systems/RosterConfig';
-import { DRAGON, GAME } from '../core/Constants';
+import { GAME, HORDE } from '../core/Constants';
+import { HORDE_DEFS, animKey } from '../objects/Horde';
 import { fitCameraToGame } from '../core/Render';
 
-/** Character, dragon, mountain and background textures (everything except generated text canvases). */
-const SMOOTH_TEXTURE_KEY = /^(hero_|lead_|dragon_|gold_mountain|bg_cave)/;
+/** Character, horde and background textures (everything except generated text canvases). */
+const SMOOTH_TEXTURE_KEY = /^(hero_|lead_|goblin|loot_|campfire|bg_forest)/;
 
 /**
  * Loads the real cropped sprites from public/assets/sprites/. Any file that
@@ -25,11 +26,16 @@ export class Preloader extends Scene {
         this.load.on('loaderror', (file: Loader.File) => this.onLoadError(file.key));
 
         this.load.setPath('assets/sprites');
-        this.load.image('bg_cave', 'bg_cave.jpg');
-        this.load.image('gold_mountain', 'gold_mountain.png');
-        for (let heads = 0; heads <= DRAGON.HEADS_MAX; heads++) {
-            this.load.image(`dragon_heads${heads}`, `dragon_heads${heads}.png`);
+        // Forest and campfire: tools/build-background.py.
+        this.load.image('bg_forest', 'bg_forest.jpg');
+        this.load.spritesheet('campfire', 'campfire.png', { frameWidth: HORDE.CAMPFIRE.FRAME, frameHeight: HORDE.CAMPFIRE.FRAME });
+        // The horde (tools/build-horde.py): every animation a spritesheet of equal frames, sizes from config/horde.json.
+        for (const def of [...HORDE_DEFS.goblins, HORDE_DEFS.chief]) {
+            for (const anim of Object.keys(def.anims)) {
+                this.load.spritesheet(animKey(def, anim), `horde/${animKey(def, anim)}.png`, { frameWidth: def.frameWidth, frameHeight: def.frameHeight });
+            }
         }
+        for (const t of HORDE_DEFS.treasures) this.load.image(t.key, `horde/${t.key}.png`);
         for (const hero of RosterConfig.heroes) {
             this.load.image(hero.sprite, `${hero.sprite}.png`);
             // Each attack is two frames: the wind-up shown during the dash, the blow (with its effect) on arrival.
@@ -64,7 +70,7 @@ export class Preloader extends Scene {
         fitCameraToGame(this);
         this.cameras.main.setBackgroundColor('#08090f');
 
-        const title = this.add.text(w / 2, h / 2 - 30, 'ОТДЕЛЫ ПРОТИВ ДРАКОНА', {
+        const title = this.add.text(w / 2, h / 2 - 30, 'ОТДЕЛЫ ПРОТИВ ОРДЫ', {
             fontFamily: 'Arial Black, Arial, sans-serif',
             fontSize: '30px',
             color: '#ffffff',
@@ -103,14 +109,14 @@ export class Preloader extends Scene {
 
         const g = this.make.graphics({ x: 0, y: 0 });
 
-        if (key === 'bg_cave') {
-            g.fillGradientStyle(0x08090f, 0x08090f, 0x2a1830, 0x2a1830, 1);
+        if (key === 'bg_forest') {
+            g.fillGradientStyle(0x0d1a12, 0x0d1a12, 0x34452a, 0x34452a, 1);
             g.fillRect(0, 0, GAME.WIDTH, GAME.HEIGHT);
-            g.generateTexture('bg_cave', GAME.WIDTH, GAME.HEIGHT);
-        } else if (key.startsWith('dragon_') || key === 'gold_mountain') {
-            g.fillStyle(key === 'gold_mountain' ? 0xc9a227 : 0xc22c2c, 1);
-            g.fillRoundedRect(0, 0, 360, 200, 24);
-            g.generateTexture(key, 360, 200);
+            g.generateTexture('bg_forest', GAME.WIDTH, GAME.HEIGHT);
+        } else if (key.startsWith('goblin') || key.startsWith('loot_') || key === 'campfire') {
+            g.fillStyle(key.startsWith('goblin') ? 0x5d8a2c : 0xc9a227, 1);
+            g.fillRoundedRect(0, 0, 120, 160, 18);
+            g.generateTexture(key, 120, 160);
         } else {
             const def = RosterConfig.heroDef(key as never);
             const color = def ? Display.Color.HexStringToColor(def.color).color : 0x888888;

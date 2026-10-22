@@ -14,34 +14,75 @@ export const GAME = {
     RENDER_SCALE: QUALITY.renderScale,
 } as const;
 
-/** Weekly plan is split into this many equal daily plans; each one crossed costs the dragon a head. */
+/** Weekly plan is split into this many equal daily plans; each one crossed costs the horde a goblin. */
 export const DAYS = 5;
 
 /**
- * Dragon + gold mountain, on the paved platform at the right of the cave
- * background. Textures are built at 2x their on-screen size by
- * tools/build-sprites.py, so they render at scale 0.5. Static — no idle bob.
+ * Timing of the antagonist. It was a five-headed dragon; since 2026-10 it is the goblin horde (HORDE below):
+ * a "head" in the code and the events (`headsRemaining`, DRAGON_HEAD_LOST, DRAGON_DEFEATED) is one goblin.
  */
 export const DRAGON = {
     HEADS_MAX: DAYS,
-    /** Mountain of gold (symbol of the plan) — bottom-center anchored. */
-    MOUNT_X: 945,
-    MOUNT_BOTTOM_Y: 530,
-    /** The dragon body sits on the mountain top — bottom-center anchored, faces left. */
-    BODY_X: 967,
-    BODY_BOTTOM_Y: 412,
-    /** Where hero lunges aim (the dragon's chest/front) and hit effects burst. */
-    HIT_X: 823,
-    HIT_Y: 292,
-    /** Stagger between successive head-loss animations when one poll crosses several day plans. */
+    /** Stagger between successive goblin deaths when one poll crosses several day plans. */
     HEAD_LOSS_STAGGER_MS: 1100,
     HEAD_LOSS_DURATION_MS: 900,
-    /** Menacing growl: rear back, tremble, settle. From time to time on its own, more often while the team is idle. */
-    GROWL_MS: 1900,
+    /** The chief's taunt (swings his blades, the ground rumbles). From time to time on its own, more often while the team is idle. */
+    GROWL_MS: 1400,
     GROWL_MIN_MS: 90_000,
     GROWL_MAX_MS: 180_000,
     GROWL_IDLE_MIN_MS: 40_000,
     GROWL_IDLE_MAX_MS: 80_000,
+} as const;
+
+/**
+ * The horde on the right of the forest road (objects/Horde.ts; art from tools/build-horde.py, which also writes the
+ * frame sizes to config/horde.json). Five goblins guarding treasure; the chief behind them. Positions are the feet.
+ * Goblins fall front first (index 0), each one's treasure flies to Cruella's feet (LOOT), and with the last one the
+ * chief sits down and cries. Static between events — no idle animation (the office laptops stay at the idle frame rate).
+ */
+export const HORDE = {
+    GOBLINS: [
+        { x: 868, y: 578 },
+        { x: 952, y: 530 },
+        { x: 1036, y: 584 },
+        { x: 1120, y: 534 },
+        { x: 1202, y: 590 },
+    ],
+    /** Texture px -> screen px. The hsdsz goblins are ~150 px figures in their sheets. */
+    GOBLIN_SCALE: 0.85,
+    CHIEF: { x: 1105, y: 482, scale: 1.25 },
+    /**
+     * Each goblin's treasure, picked at random (again every new week): one big piece and up to SMALL_MAX small ones
+     * at its feet, in front of it (behind it the goblins standing in front would hide it). Offsets from the goblin's
+     * feet; in Cruella's pile the same pieces lie at PILE offsets from the goblin's LOOT slot. Textures are 2x.
+     */
+    TREASURE: {
+        SCALE: 0.55,
+        BIG: { dx: 20, dy: 14 },
+        SMALL: [{ dx: 54, dy: 10 }, { dx: -22, dy: 18 }],
+        SMALL_MAX: 2,
+        PILE_SMALL: [{ dx: 24, dy: 7 }, { dx: -22, dy: 9 }],
+        /** Gap between the pieces of one goblin taking off. */
+        FLIGHT_STAGGER_MS: 130,
+    },
+    /** The pile of won treasure at Cruella's feet: where each goblin's big piece lands, in the order they fall. */
+    LOOT: [
+        { x: 172, y: 566 },
+        { x: 116, y: 580 },
+        { x: 220, y: 588 },
+        { x: 62, y: 570 },
+        { x: 162, y: 598 },
+    ],
+    LOOT_FLIGHT_MS: 950,
+    /**
+     * The goblins' campfire (feet = the bottom of the logs). Its five frames loop at FPS — below the idle frame rate
+     * (core/PowerSaver.ts), so it costs the laptops nothing extra. Frame size of the 4x texture.
+     */
+    CAMPFIRE: { x: 1236, y: 470, scale: 0.36, FPS: 8, FRAME: 256 },
+    /** The hero's leading edge stops this far in front of the target's front edge. */
+    STRIKE_GAP: 6,
+    /** After the chief sits down he cries for this long, then keeps a still, tearful pose (no endless animation). */
+    CRY_MS: 14_000,
 } as const;
 
 /** Phases of HeroSprite.playHit: wind-up, dash to the dragon, recoil on contact, walk back. */
@@ -72,10 +113,8 @@ export const HERO = {
     /** Whole playHit chain, event to the hero standing back at its slot. */
     HIT_DURATION_MS: HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS + HIT_PHASES.RECOIL_MS + HIT_PHASES.RETURN_MS,
     /**
-     * The hero runs along its own row until its leading edge (weapon/fist) reaches
-     * this x — the foot of the gold mountain under the dragon — and hits from there.
-     * (Sending everyone down to one spot in front of the pile was tried and
-     * rejected: the heroes looked like they were hitting the gold.)
+     * Fallback for where a hero's leading edge (weapon/fist/fire) stops. Normally the horde says it
+     * (Horde.strikeFrontX: the front of the nearest goblin still standing, then of the chief).
      */
     STRIKE_FRONT_X: 790,
     /** How far the hero steps back in the wind-up, px. */

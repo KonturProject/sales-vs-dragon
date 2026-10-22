@@ -7,3 +7,6 @@ dist-ssr
 .claude/
 .agents/
 skills-lock.json
+
+# The user's working folder for character art (sources, references) — not part of the repo
+heroes/

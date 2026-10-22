@@ -44,7 +44,7 @@ export class HUDScene extends Scene {
     create() {
         fitCameraToGame(this);
 
-        this.title = this.add.text(GAME.WIDTH / 2, 4, 'НЕДЕЛЬНЫЙ ПЛАН — ОТДЕЛЫ ПРОТИВ ДРАКОНА', {
+        this.title = this.add.text(GAME.WIDTH / 2, 4, 'НЕДЕЛЬНЫЙ ПЛАН — ОТДЕЛЫ ПРОТИВ ОРДЫ', {
             fontFamily: 'Arial Black, Arial, sans-serif',
             fontSize: '13px',
             resolution: GAME.RENDER_SCALE,
@@ -246,7 +246,7 @@ export class HUDScene extends Scene {
 
     private renderHeads(heads: number) {
         this.shownHeads = heads;
-        this.headsText.setText(heads > 0 ? `ГОЛОВ У ДРАКОНА: ${heads} / ${DAYS}` : 'ДРАКОН ПОБЕЖДЁН');
+        this.headsText.setText(heads > 0 ? `ГОБЛИНОВ: ${heads} / ${DAYS}` : 'ОРДА ПОВЕРЖЕНА');
     }
 
     /** Day dividers on the weekly bar — each one is a daily plan (weekly plan / DAYS). */
@@ -267,8 +267,8 @@ export class HUDScene extends Scene {
 
     private showVictoryBanner() {
         if (this.banner) return;
-        // Upper-left of the cave: the empty wall between the leaderboard and the dragon,
-        // so the banner never covers the dragon or the heroes.
+        // Upper-left of the cave: the empty wall between the leaderboard and the horde,
+        // so the banner never covers the crying chief or the heroes.
         const cx = 495;
         const cy = 215;
         const panel = this.add.graphics();
@@ -276,7 +276,7 @@ export class HUDScene extends Scene {
         panel.fillRoundedRect(-290, -62, 580, 124, 18);
         panel.lineStyle(4, 0xc9a227, 1);
         panel.strokeRoundedRect(-290, -62, 580, 124, 18);
-        const title = this.add.text(0, -20, 'ОТДЕЛЫ ПОБЕДИЛИ ДРАКОНА!', {
+        const title = this.add.text(0, -20, 'ОТДЕЛЫ ПОБЕДИЛИ!', {
             fontFamily: 'Arial Black, Arial, sans-serif',
             fontSize: '29px',
             resolution: GAME.RENDER_SCALE,

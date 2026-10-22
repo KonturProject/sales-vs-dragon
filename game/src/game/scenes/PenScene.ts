@@ -7,7 +7,7 @@ import { fitCameraToGame } from '../core/Render';
 import { DRAGON, GAME, HERO, HUD } from '../core/Constants';
 import { RosterConfig, HeroDef } from '../systems/RosterConfig';
 import { DataPollingService } from '../systems/DataPollingService';
-import { Dragon } from '../objects/Dragon';
+import { Horde } from '../objects/Horde';
 import { HeroSprite } from '../objects/HeroSprite';
 import { LeadSprite } from '../objects/LeadSprite';
 import { IdleMood } from '../systems/IdleMood';
@@ -15,18 +15,19 @@ import { emitFloatingAmount, startIdleSway } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 
 /**
- * The tableau: department heroes on the left, the dragon on its gold mountain
- * on the right, the branch lead standing apart. Reacts to game events only —
- * decisions about *what* happens (which hero hit, how many heads are left) are
- * made upstream in DataPollingService / GameState.
+ * The tableau: department heroes on the left, the goblin horde (five goblins with
+ * treasure, their chief behind) on the right, the branch lead standing apart
+ * with the treasure won so far at her feet. Reacts to game events only — decisions
+ * about *what* happens (which hero hit, how many goblins are left) are made
+ * upstream in DataPollingService / GameState.
  */
 export class PenScene extends Scene {
-    private dragon!: Dragon;
+    private horde!: Horde;
     private heroes = new Map<string, HeroSprite>();
     private lead: LeadSprite | null = null;
     private hasAppliedFirstProgress = false;
     private hasPlayedVictory = false;
-    /** Falls asleep when nobody sells for a long time; makes the dragon growl (see systems/IdleMood.ts). */
+    /** Falls asleep when nobody sells for a long time; makes the goblin chief taunt (see systems/IdleMood.ts). */
     mood!: IdleMood;
 
     constructor() {
@@ -37,10 +38,10 @@ export class PenScene extends Scene {
         fitCameraToGame(this);
         this.cameras.main.setBackgroundColor('#08090f');
 
-        // Cave picture, built to exactly the canvas size by tools/build-sprites.py.
-        this.add.image(GAME.WIDTH / 2, GAME.HEIGHT / 2, 'bg_cave').setDisplaySize(GAME.WIDTH, GAME.HEIGHT).setDepth(-10);
+        // Forest with the face-tree behind the heroes (tools/build-background.py), 1.5x the logical size.
+        this.add.image(GAME.WIDTH / 2, GAME.HEIGHT / 2, 'bg_forest').setDisplaySize(GAME.WIDTH, GAME.HEIGHT).setDepth(-10);
 
-        this.dragon = new Dragon(this);
+        this.horde = new Horde(this);
 
         // Depth follows the feet's y so the front row draws over the back row.
         const fighters = RosterConfig.heroes.filter((h: HeroDef) => !h.lead);
@@ -58,7 +59,7 @@ export class PenScene extends Scene {
         }
 
         startIdleSway(this, [...this.heroes.values(), ...(this.lead ? [this.lead] : [])]);
-        this.mood = new IdleMood(this, [...this.heroes.values()], this.dragon, this.lead ? [this.lead.span()] : []);
+        this.mood = new IdleMood(this, [...this.heroes.values()], this.horde, this.lead ? [this.lead.span()] : []);
 
         EventBus.on(GameEvents.MONEY_IN, this.onMoneyIn, this);
         EventBus.on(GameEvents.PROGRESS_CHANGED, this.onProgressChanged, this);
@@ -87,14 +88,14 @@ export class PenScene extends Scene {
     }
 
     private onMoneyIn(payload: MoneyInPayload) {
-        // The hero dashes to the dragon; the thud, the dragon's reaction and the
+        // The hero dashes to the front goblin; the thud, the goblin's reaction and the
         // lead's cheer all land with the blow, not with the sale event.
         this.time.delayedCall(HERO.IMPACT_MS, () => AudioSystem.playHitThud());
 
         const hero = this.heroes.get(payload.heroSlug);
         if (hero) {
-            hero.playHit(payload.delta);
-            this.time.delayedCall(HERO.IMPACT_MS, () => this.dragon.reactToHit());
+            hero.playHit(payload.delta, this.horde.strikeFrontX());
+            this.time.delayedCall(HERO.IMPACT_MS, () => this.horde.reactToHit());
             emitFloatingAmount(
                 this, hero.x, hero.y - 150, payload.delta,
                 HUD.BAR_X + HUD.BAR_WIDTH / 2, HUD.BAR_Y + HUD.BAR_HEIGHT / 2
@@ -126,7 +127,7 @@ export class PenScene extends Scene {
                 this.mood.wakeAll();
                 break;
             case 'growl':
-                this.dragon.growl();
+                this.horde.growl();
                 break;
             case 'celebrate':
                 AudioSystem.playFanfare();
@@ -145,10 +146,10 @@ export class PenScene extends Scene {
         // (create() also calls this once with an empty GameState — that one must not
         // count, or the first poll's lower head count would be treated as a drop).
         if (!this.hasAppliedFirstProgress) {
-            this.dragon.setHeads(payload.headsRemaining, false);
+            this.horde.setHeads(payload.headsRemaining, false);
             this.hasAppliedFirstProgress = GameState.hasBaseline;
-        } else if (payload.headsRemaining > this.dragon.headCount) {
-            this.dragon.setHeads(payload.headsRemaining, true);
+        } else if (payload.headsRemaining > this.horde.headCount) {
+            this.horde.setHeads(payload.headsRemaining, true);
         }
 
         // Finale already played and we've dropped back under 100%: relax the victory pose.
@@ -165,7 +166,7 @@ export class PenScene extends Scene {
     private onDragonHeadLost(payload: DragonHeadLostPayload) {
         this.time.delayedCall(payload.delayMs, () => {
             if (payload.heads < GameState.headsRemaining) return;
-            this.dragon.loseHead(payload.heads);
+            this.horde.loseHead(payload.heads);
         });
     }
 
@@ -174,7 +175,7 @@ export class PenScene extends Scene {
             if (!GameState.dragonDefeated) return;
             AudioSystem.playFanfare();
             this.hasPlayedVictory = true;
-            this.dragon.defeat();
+            this.horde.defeat();
             this.heroes.forEach(hero => hero.playCelebrate());
             this.lead?.playVictory();
             this.cameras.main.shake(300, 0.008);

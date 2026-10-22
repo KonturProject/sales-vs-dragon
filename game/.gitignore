@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Layered Photoshop originals — the builds use the exported PNG layers next to them
+/assets-source/**/*.psd

@@ -1,6 +1,6 @@
 # Карта проекта
 
-Справочник по структуре репозитория. Концепция и механика — [gameplan.md](./gameplan.md) и [dragon-track.md](./dragon-track.md), технические решения — [tech.md](./tech.md).
+Справочник по структуре репозитория. Концепция и механика — [gameplan.md](./gameplan.md) и [horde-track.md](./horde-track.md) (прежний дракон — [dragon-track.md](./dragon-track.md)), технические решения — [tech.md](./tech.md).
 
 ## Верхний уровень
 
@@ -10,7 +10,8 @@ claude first pr/                        <- корень (git-репозитор�
 ├── ROP.jpg                              исходный референс-арт первой версии (в игре не используется)
 ├── docs/                                вся документация проекта
 │   ├── gameplan.md                      концепция, ростер, статус
-│   ├── dragon-track.md                  трек «Дракон»: правила механики, инвентаризация ассетов, план работ
+│   ├── horde-track.md                   трек «Орда» (текущий): гоблины, вождь, сокровища, лесной фон — правила, ассеты, пайплайн
+│   ├── dragon-track.md                  трек «Дракон» (история, до 2026-10-22): правила механики, инвентаризация ассетов
 │   ├── tech.md                          технические решения и их обоснование (пайплайн ассетов, механика, Fooocus)
 │   └── MAP.md                           ты здесь
 ├── apps-script/                         исходник бэкенда (копия того, что реально лежит в Apps Script)
@@ -35,7 +36,7 @@ game/
 ├── public/
 │   ├── config.json                      {appsScriptUrl, useMock} — читается в рантайме, правится без пересборки
 │   ├── assets/
-│   │   ├── sprites/                     ВСЕ спрайты игры — результат tools/build-sprites.py, см. таблицу ниже
+│   │   ├── sprites/                     ВСЕ спрайты игры — результат tools/build-*.py, см. таблицу ниже (horde/ — орда и сокровища)
 │   │   ├── mock/mock-status.json        фикстура для офлайн-разработки (useMock: true), коды отделов СР1/2/3/5/6/9
 │   │   └── bg.png, logo.png             неиспользуемые остатки шаблона phaserjs/template-vite-ts
 │   └── style.css, favicon.png
@@ -44,7 +45,7 @@ game/
 │   └── game/
 │       ├── main.ts                      Phaser.Game config: pixelArt:true, roundPixels:true, буфер = 1280·scale × 720·scale (scale из Quality.ts), fps.limit, PowerSaver, список сцен
 │       ├── core/
-│       │   ├── Constants.ts             ВСЕ магические числа: GAME (+RENDER_SCALE), DAYS, DRAGON, HERO (слоты, фазы удара, STRIKE_FRONT_X), HUD, FX, POLL, HERO_SLUGS
+│       │   ├── Constants.ts             ВСЕ магические числа: GAME (+RENDER_SCALE), DAYS, DRAGON (тайминги «голов» и рыка), HORDE (гоблины, вождь, сокровища, куча у Круэллы, костёр), HERO (слоты, фазы удара), IDLE, HUD, FX, POLL, HERO_SLUGS
 │       │   ├── Render.ts                fitCameraToGame(scene): зум камеры ×RENDER_SCALE — вызывать первой строкой в каждой сцене
 │       │   ├── Quality.ts               профиль качества на загрузке: tier low/high, масштаб буфера, частоты кадров; URL-параметры ?quality ?scale ?fps ?idlefps
 │       │   ├── PowerSaver.ts            частота кадров на лету: active / ambient / idle (см. tech.md «Производительность»)
@@ -53,20 +54,21 @@ game/
 │       ├── scenes/
 │       │   ├── Boot.ts                  пустой, сразу стартует Preloader
 │       │   ├── Preloader.ts             грузит все текстуры + экран загрузки; при 404 — цветной плейсхолдер под тем же ключом
-│       │   ├── PenScene.ts              ГЛАВНАЯ сцена: герои слева, дракон на горе золота справа, Круэлла в стороне; реакции на события
-│       │   └── HUDScene.ts              параллельная сцена: полоса недели с делениями «день 1…5», счётчик голов, победная надпись, рейтинг, индикатор связи, mute
+│       │   ├── PenScene.ts              ГЛАВНАЯ сцена: лес, герои слева, орда справа, Круэлла в стороне; реакции на события
+│       │   └── HUDScene.ts              параллельная сцена: полоса недели с делениями «день 1…5», счётчик гоблинов, победная надпись, рейтинг, индикатор связи, mute
 │       ├── objects/
-│       │   ├── Dragon.ts                Container(гора золота + тело дракона); setHeads(), reactToHit(), loseHead(), defeat()
-│       │   ├── HeroSprite.ts            Container(sprite, якорь у ног); playHit(): рывок до подножия горы, удар по прибытии, возврат; позы round-robin; playCelebrate(); редкий наклон (без покачивания по y)
+│       │   ├── Horde.ts                 Goblin ×5 (сокровища у ног, ранение, смерть, полёт добычи к Круэлле, замах), Chief (рык, «сидит и плачет»), Horde: setHeads(), strikeFrontX(), reactToHit(), loseHead(), defeat(), growl(); костёр
+│       │   ├── HeroSprite.ts            Container(sprite, якорь у ног); playHit(): рывок до ближайшего гоблина (strikeFrontX), удар по прибытии, возврат; позы round-robin; playCelebrate(); редкий наклон (без покачивания по y)
 │       │   ├── LeadSprite.ts            Круэлла: редкий наклон, playCheer() на каждую продажу, playVictory()/resetPose()
 │       │   └── Leaderboard.ts           живой пересортируемый мини-рейтинг 6 отделов (Container)
 │       ├── systems/
 │       │   ├── DataPollingService.ts    fetch раз в 15с, diff по РОПам → MONEY_IN; расчёт голов → DRAGON_HEAD_LOST / DRAGON_DEFEATED
 │       │   ├── RosterConfig.ts          heroSlugForRop(), ropNameForSlug(), heroDef() — обёртка над config/*.json
 │       │   ├── Audio.ts                 AudioSystem — процедурный звук (удар, рык при потере головы, фанфара, падение героя, рычание дракона), mute в localStorage
-│       │   ├── IdleMood.ts              режиссёр простоя: нет продаж час → герои падают/засыпают, продажа будит; рычание дракона по расписанию
+│       │   ├── IdleMood.ts              режиссёр простоя: нет продаж час → герои падают/засыпают, продажа будит; рык вождя по расписанию
 │       │   └── Fx.ts                    emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst, flashScreen, startIdleSway/addIdleFlicker
 │       └── config/
+│           ├── horde.json               генерируется tools/build-horde.py: кадры гоблинов и вождя, глаза сидящего вождя, список сокровищ
 │           ├── heroRoster.json          ростер: slug/sprite/color/lead/hits — `hits` = число поз удара (6 героев + Круэлла)
 │           └── ropMapping.json          СР1→lion, СР2→scrooge, СР3→grinch, СР5→yoda, СР6→neznaika, СР9→minion
 ├── src-admin/
@@ -76,8 +78,12 @@ game/
 ├── assets-source/                       ИСХОДНИКИ ассетов, не публикуются в игру напрямую
 │   ├── raw-pixel/                       прежний арт (героини/свин/Валькирия) — больше не используется, лежит как архив
 │   └── character-refs/                  ТЕКУЩИЙ арт (Fooocus + доработка в Photoshop, прозрачный PNG): `СР1 - Лев`, `СР2 - Скрудж`, `СР3 - Гринч`, `СР 5 - йода`, `СР6 - Незнайка с деньгами`, `СР9 - миньон` (персонаж + Анимация 1..3), `Дракон/` (6 состояний + гора золота), `Круэлла …/`, `фон.jfif` (пещера)
-│   └── hero-sheets/                     ГЕРОИ с 2026-10-22: лист 4×4 на героя (`СР1 - лев`, … `СР9 - Миньон`/sheet.png), хэллоуинские образы с атаками
-├── tools/build-sprites.py               hero-sheets + character-refs → public/assets/sprites (обрезка, единый масштаб поз, даунскейл ×2, совмещение состояний дракона, кадрирование фона); запуск: `python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F]`
+│   ├── hero-sheets/                     ГЕРОИ с 2026-10-22: лист 4×4 на героя (`СР1 - лев`, … `СР9 - Миньон`/sheet.png), хэллоуинские образы с атаками
+│   ├── horde/                           ОРДА: листы hsdsz (goblin-scout/shaman/thrower/chief), `goblin-chief/sit.png` (нарисован для игры), `gold-bag/` (сокровища); README со ссылками
+│   └── background/                      ФОН: CraftPix Battleground3 (слои Bright/Pale; PSD в git не кладём), `CampFireFinished.png`
+├── tools/build-sprites.py               hero-sheets + character-refs → public/assets/sprites (герои, Круэлла; дракон/гора/пещера — только по `--only`); запуск: `python tools/build-sprites.py [--only heroes lead dragon mountain bg]`
+├── tools/build-horde.py                 assets-source/horde → public/assets/sprites/horde + src/game/config/horde.json
+├── tools/build-background.py            assets-source/background → bg_forest.jpg, campfire.png
 ├── tools/mock-backend.mjs               локальный бэкенд: настоящий Code.gs на имитации Google (`npm run mock-backend`, :8787, PIN 1234)
 ├── vite/config.{dev,prod}.mjs           prod-конфиг собирает ДВЕ точки входа (index.html + admin.html)
 ├── package.json                         scripts: dev, build, dev-nolog, build-nolog, deploy (gh-pages)
@@ -91,9 +97,11 @@ game/
 | `hero_lion / hero_scrooge / hero_grinch / hero_yoda / hero_neznaika / hero_minion.png` | 6 героев-отделов, стоячая поза (idle) |
 | `hero_<имя>_hit1..4.png`, `hero_<имя>_hit1..4_windup.png` | четыре атаки: кадр удара и кадр замаха (из листа `assets-source/hero-sheets/`), идут по кругу в `HeroSprite.playHit()` — замах на рывке, удар в момент попадания |
 | `lead_cruella.png` | Круэлла, руководитель филиала (одна поза) |
-| `dragon_heads5.png … dragon_heads0.png` | дракон с N головами (5 = цел, 0 = все срублены); совмещены между собой, меняются на месте |
-| `gold_mountain.png` | гора золота под драконом (символ плана) |
-| `bg_cave.jpg` | фон-пещера 1280×720 (кадрируется из `фон.jfif`), под героями пол-платформа, справа тёмный тоннель за драконом |
+| `horde/goblin1..5_<anim>.png` | гоблины: спрайт-листы idle / hurt / die / attack (какие есть у листа), рамка общая на все анимации, смотрят влево |
+| `horde/goblin_chief_<anim>.png` | вождь: idle, hurt, taunt (рык), sit (2 кадра: ревёт / трёт глаза) |
+| `horde/loot_<имя>.png` | сокровища: chest_silver, chest_gold, bag, gold_pile (крупные), coin_stack, coin, crown, goblet, coin_heap, coin_tower, swords (мелкие) |
+| `bg_forest.jpg` | лес 1920×1080 (в игре 1280×720), дерево с лицом слева за героями, справа дорога под лагерь |
+| `campfire.png` | костёр, 5 кадров 256×256 (×4 от оригинала) |
 
 ## `apps-script/` — бэкенд
 

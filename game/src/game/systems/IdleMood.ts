@@ -2,12 +2,9 @@ import { Scene } from 'phaser';
 import { EventBus, GameEvents, MoneyInPayload } from '../core/EventBus';
 import { DRAGON, IDLE } from '../core/Constants';
 import { HeroSprite } from '../objects/HeroSprite';
-import { Dragon } from '../objects/Dragon';
+import { Horde } from '../objects/Horde';
 
 type Span = [number, number];
-
-/** Left edge of the gold mountain on the floor — a hero cannot lie down on the pile. */
-const MOUNTAIN_SPAN: Span = [DRAGON.MOUNT_X - 195, DRAGON.MOUNT_X + 195];
 
 function overlap(a: Span, b: Span): number {
     return Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0]));
@@ -17,7 +14,7 @@ function overlap(a: Span, b: Span): number {
  * The mood of an idle office. Two things happen "from time to time" when nothing is going on:
  *  - no sale for an hour (game time, whole team) -> one random hero keels over or dozes off,
  *    one more with every further hour, at most IDLE.MAX_DOWN; any sale wakes everybody;
- *  - the dragon growls and trembles menacingly, more often the longer the silence.
+ *  - the goblin chief taunts (swings his blades, the ground rumbles), more often the longer the silence.
  *
  * The idle time is *not* per department on purpose: a quiet hour is the team's, and a hero
  * lying on the floor must not read as "this department is failing".
@@ -32,7 +29,7 @@ export class IdleMood {
     constructor(
         private scene: Scene,
         private heroes: HeroSprite[],
-        private dragon: Dragon,
+        private horde: Horde,
         /** Things a fallen hero should avoid lying on (Cruella's extent). */
         private obstacles: Span[] = [],
     ) {
@@ -77,7 +74,7 @@ export class IdleMood {
         if (this.asleepCount() < this.dueCount() && (force || Math.random() < IDLE.DROP_CHANCE)) this.dropOne();
     }
 
-    /** One random standing hero falls over or dozes off; the dragon takes notice. */
+    /** One random standing hero falls over or dozes off; the goblin chief takes notice. */
     dropOne(): boolean {
         return this.drop('random', 'random');
     }
@@ -98,7 +95,7 @@ export class IdleMood {
         const roomOnFloor = this.heroes.filter(h => h.isLying).length < IDLE.MAX_LYING;
         const fall = mode === 'fall' || (mode !== 'doze' && roomOnFloor && Math.random() < IDLE.FALL_SHARE);
         const done = fall ? hero.fallOver(dir) : hero.doze(dir);
-        if (done) this.scene.time.delayedCall(1300, () => this.dragon.growl());
+        if (done) this.scene.time.delayedCall(1300, () => this.horde.growl());
         return done;
     }
 
@@ -107,7 +104,7 @@ export class IdleMood {
         const others: Span[] = [
             ...this.heroes.filter(h => h !== hero).map(h => h.coveredSpan()),
             ...this.obstacles,
-            MOUNTAIN_SPAN,
+            this.horde.span(),
         ];
         const cost = (dir: 1 | -1) => others.reduce((sum, span) => sum + overlap(hero.lyingSpan(dir), span), 0);
         const left = cost(-1);
@@ -134,7 +131,7 @@ export class IdleMood {
         const min = quiet ? DRAGON.GROWL_IDLE_MIN_MS : DRAGON.GROWL_MIN_MS;
         const max = quiet ? DRAGON.GROWL_IDLE_MAX_MS : DRAGON.GROWL_MAX_MS;
         this.scene.time.delayedCall(min + Math.random() * (max - min), () => {
-            this.dragon.growl();
+            this.horde.growl();
             this.scheduleGrowl();
         });
     }

@@ -222,8 +222,8 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
     }
 
     /**
-     * Wind-up, dash along the hero's own row until its leading edge reaches the
-     * foot of the dragon's mountain (STRIKE_FRONT_X), blow + recoil there, then
+     * Wind-up, dash along the hero's own row until its leading edge reaches
+     * `strikeFrontX` (the front of the nearest goblin still standing), blow + recoil there, then
      * walk back to the slot. The colored burst, shake and ring fire when the hero
      * *arrives* (HERO.IMPACT_MS after the call), which is also when PenScene makes
      * the dragon react. Used by the hero whose department (СР-код) the incoming
@@ -231,7 +231,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
      * the slot's y (a front-row hero may cover a back-row one for a moment; that
      * reads better than running everyone down to one spot in front of the gold).
      */
-    playHit(delta = 0) {
+    playHit(delta = 0, strikeFrontX: number = HERO.STRIKE_FRONT_X) {
         if (this.posture !== 'standing') this.wakeInstant(); // a sale needs this hero right now
         if (this.busy) return;
         this.busy = true;
@@ -250,7 +250,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
             : { windup: this.defaultTexture, blow: this.defaultTexture };
         if (this.attacks.length > 0) this.nextAttackIndex = (this.nextAttackIndex + 1) % this.attacks.length;
         const poseWidth = this.scene.textures.getFrame(attack.blow).width;
-        const strikeX = Math.max(this.baseX, HERO.STRIKE_FRONT_X - (poseWidth * s * 1.12) / 2);
+        const strikeX = Math.max(this.baseX, strikeFrontX - (poseWidth * s * 1.12) / 2);
         let ghostTick = 0;
 
         this.scene.tweens.chain({

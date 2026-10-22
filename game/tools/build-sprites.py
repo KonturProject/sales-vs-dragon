@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """Builds game sprites in public/assets/sprites from the hand-finished art in assets-source.
 Run from game/:  python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F] [--out DIR]
+By default only the heroes and the branch lead: the dragon, the gold mountain and the cave are no longer in the game
+(since 2026-10 it is the goblin horde in a forest — tools/build-horde.py, tools/build-background.py); their parts are
+kept here for reference and are built only when asked for with --only.
 Needs Python with Pillow, numpy and scipy (scipy only for the hero sheets).
 
 Sources are already transparent, so no background removal here — only cropping, scaling (LANCZOS, to 2x the
@@ -8,8 +11,7 @@ on-screen size: Phaser renders them at scale 0.5) and alignment:
   - heroes: one 4x4 sheet per hero in assets-source/hero-sheets/<group>/sheet.png (stance + attack frames, the user's
     Halloween versions, 2026-10). The standing pose and four two-frame attacks (wind-up, blow) are cut out, scaled
     together and anchored on the feet so swapping frames never makes a hero jump; see build_hero_sheet;
-  - the branch lead, the dragon (six states aligned so heads swap in place), the gold mountain and the background
-    from assets-source/character-refs.
+  - the branch lead (and the old dragon, gold mountain and cave) from assets-source/character-refs.
 """
 import argparse, os, sys
 import numpy as np
@@ -260,12 +262,12 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=os.path.join(ROOT, 'public', 'assets', 'sprites'))
     ap.add_argument('--only', choices=['heroes', 'lead', 'dragon', 'mountain', 'bg'], nargs='+',
-                    help='rebuild only these parts (the dragon alignment takes minutes)')
+                    help='build only these parts (default: heroes lead; the dragon alignment takes minutes)')
     ap.add_argument('--mount-clip', type=float, default=MOUNT_CLIP_RIGHT,
                     help='share of the gold mountain cut off its right side (0 = original art)')
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    only = set(args.only or ['heroes', 'lead', 'dragon', 'mountain', 'bg'])
+    only = set(args.only or ['heroes', 'lead'])
     if 'heroes' in only:
         for prefix, (slug, h, stance, attacks) in HERO_SHEETS.items():
             build_hero_sheet(args.out, prefix, slug, h, stance, attacks)
