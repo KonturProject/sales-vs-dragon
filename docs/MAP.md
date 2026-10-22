@@ -76,7 +76,8 @@ game/
 ├── assets-source/                       ИСХОДНИКИ ассетов, не публикуются в игру напрямую
 │   ├── raw-pixel/                       прежний арт (героини/свин/Валькирия) — больше не используется, лежит как архив
 │   └── character-refs/                  ТЕКУЩИЙ арт (Fooocus + доработка в Photoshop, прозрачный PNG): `СР1 - Лев`, `СР2 - Скрудж`, `СР3 - Гринч`, `СР 5 - йода`, `СР6 - Незнайка с деньгами`, `СР9 - миньон` (персонаж + Анимация 1..3), `Дракон/` (6 состояний + гора золота), `Круэлла …/`, `фон.jfif` (пещера)
-├── tools/build-sprites.py               character-refs → public/assets/sprites (обрезка, единый масштаб поз, даунскейл ×2, совмещение состояний дракона, кадрирование фона); запуск: `python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F]`
+│   └── hero-sheets/                     ГЕРОИ с 2026-10-22: лист 4×4 на героя (`СР1 - лев`, … `СР9 - Миньон`/sheet.png), хэллоуинские образы с атаками
+├── tools/build-sprites.py               hero-sheets + character-refs → public/assets/sprites (обрезка, единый масштаб поз, даунскейл ×2, совмещение состояний дракона, кадрирование фона); запуск: `python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F]`
 ├── tools/mock-backend.mjs               локальный бэкенд: настоящий Code.gs на имитации Google (`npm run mock-backend`, :8787, PIN 1234)
 ├── vite/config.{dev,prod}.mjs           prod-конфиг собирает ДВЕ точки входа (index.html + admin.html)
 ├── package.json                         scripts: dev, build, dev-nolog, build-nolog, deploy (gh-pages)
@@ -88,7 +89,7 @@ game/
 | Файл | Использование |
 |---|---|
 | `hero_lion / hero_scrooge / hero_grinch / hero_yoda / hero_neznaika / hero_minion.png` | 6 героев-отделов, стоячая поза (idle) |
-| `hero_<имя>_hit1..3.png` | позы удара (у Скруджа только `hit1`), чередуются round-robin в `HeroSprite.playHit()` |
+| `hero_<имя>_hit1..4.png`, `hero_<имя>_hit1..4_windup.png` | четыре атаки: кадр удара и кадр замаха (из листа `assets-source/hero-sheets/`), идут по кругу в `HeroSprite.playHit()` — замах на рывке, удар в момент попадания |
 | `lead_cruella.png` | Круэлла, руководитель филиала (одна поза) |
 | `dragon_heads5.png … dragon_heads0.png` | дракон с N головами (5 = цел, 0 = все срублены); совмещены между собой, меняются на месте |
 | `gold_mountain.png` | гора золота под драконом (символ плана) |

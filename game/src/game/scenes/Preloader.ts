@@ -32,7 +32,9 @@ export class Preloader extends Scene {
         }
         for (const hero of RosterConfig.heroes) {
             this.load.image(hero.sprite, `${hero.sprite}.png`);
+            // Each attack is two frames: the wind-up shown during the dash, the blow (with its effect) on arrival.
             for (let i = 1; i <= hero.hits; i++) {
+                this.load.image(`${hero.sprite}_hit${i}_windup`, `${hero.sprite}_hit${i}_windup.png`);
                 this.load.image(`${hero.sprite}_hit${i}`, `${hero.sprite}_hit${i}.png`);
             }
         }
@@ -97,7 +99,7 @@ export class Preloader extends Scene {
 
         // Attack poses are optional variety (HeroSprite checks texture existence
         // before using them), so a missing one gets no placeholder.
-        if (/_hit\d+$/.test(key)) return;
+        if (/_hit\d+(_windup)?$/.test(key)) return;
 
         const g = this.make.graphics({ x: 0, y: 0 });
 

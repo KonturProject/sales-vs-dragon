@@ -1,12 +1,15 @@
 #!/usr/bin/env python
-"""Builds game sprites in public/assets/sprites from the hand-finished PNGs in
-assets-source/character-refs. Run from game/:  python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F] [--out DIR]
+"""Builds game sprites in public/assets/sprites from the hand-finished art in assets-source.
+Run from game/:  python tools/build-sprites.py [--only heroes lead dragon mountain bg] [--mount-clip F] [--out DIR]
+Needs Python with Pillow, numpy and scipy (scipy only for the hero sheets).
 
-Sources are already transparent (Photoshop cut-outs), so no background removal
-here — only: crop to alpha bbox, put every pose of a hero at one common pixel
-scale, downscale with LANCZOS to 2x the on-screen size (Phaser renders them at
-scale 0.5 with NEAREST; shrinking 1000px art 6x with NEAREST alone is noisy),
-and align the six dragon states so heads swap in place.
+Sources are already transparent, so no background removal here — only cropping, scaling (LANCZOS, to 2x the
+on-screen size: Phaser renders them at scale 0.5) and alignment:
+  - heroes: one 4x4 sheet per hero in assets-source/hero-sheets/<group>/sheet.png (stance + attack frames, the user's
+    Halloween versions, 2026-10). The standing pose and four two-frame attacks (wind-up, blow) are cut out, scaled
+    together and anchored on the feet so swapping frames never makes a hero jump; see build_hero_sheet;
+  - the branch lead, the dragon (six states aligned so heads swap in place), the gold mountain and the background
+    from assets-source/character-refs.
 """
 import argparse, os, sys
 import numpy as np
@@ -14,17 +17,20 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'assets-source', 'character-refs')
+SHEETS = os.path.join(ROOT, 'assets-source', 'hero-sheets')
 TEX = 2  # texture px per on-screen px (game renders at scale 1/TEX)
 
-# folder prefix -> (slug, on-screen standing height px, hit-pose scale factors relative to the standing sprite)
-# Pose factors were tuned by eye: poses were drawn at a smaller scale than the standing sprite.
-HEROES = {
-    'СР1':  ('hero_lion',     200, [1.50, 1.62, 1.35]),
-    'СР2':  ('hero_scrooge',  190, [1.00]),
-    'СР3':  ('hero_grinch',   205, [2.35, 2.35, 2.35]),
-    'СР 5': ('hero_yoda',     175, [1.60, 1.60, 1.60]),
-    'СР6':  ('hero_neznaika', 195, [2.10, 2.10, 2.10]),
-    'СР9':  ('hero_minion',   165, [1.00, 1.00, 1.00]),
+# Folder prefix in hero-sheets -> (slug, on-screen standing height px, stance cell, attacks).
+# Cells are (row, col) of the 4x4 sheet. Each attack is (wind-up cell, blow cell): the hero shows the wind-up while
+# it dashes and the blow (with its fire / glow / slash effect) on arrival — config/heroRoster.json `hits` = 4 attacks,
+# used one after another on successive sales. Chosen by eye from the sheets; the standing heights are the old ones.
+HERO_SHEETS = {
+    'СР1': ('hero_lion', 200, (0, 0), [((0, 1), (0, 2)), ((1, 1), (1, 2)), ((2, 1), (2, 2)), ((3, 1), (3, 2))]),
+    'СР2': ('hero_scrooge', 190, (0, 3), [((1, 0), (1, 2)), ((0, 0), (0, 2)), ((2, 0), (2, 2)), ((3, 0), (3, 2))]),
+    'СР3': ('hero_grinch', 205, (0, 0), [((0, 1), (0, 2)), ((1, 1), (1, 2)), ((2, 1), (2, 2)), ((3, 1), (3, 2))]),
+    'СР5': ('hero_yoda', 175, (0, 0), [((0, 1), (0, 2)), ((1, 1), (1, 2)), ((2, 1), (2, 2)), ((3, 1), (3, 2))]),
+    'СР6': ('hero_neznaika', 195, (0, 0), [((0, 1), (0, 2)), ((1, 1), (1, 2)), ((2, 1), (2, 2)), ((3, 1), (3, 2))]),
+    'СР9': ('hero_minion', 165, (2, 3), [((0, 0), (0, 2)), ((1, 0), (1, 2)), ((2, 0), (2, 2)), ((3, 0), (3, 2))]),
 }
 LEAD = ('lead_cruella', 205)
 BG_SIZE = (1280, 720)   # must equal GAME.WIDTH/HEIGHT in Constants.ts
@@ -62,16 +68,75 @@ def resized(im, scale):
     return im.resize((w, h), Image.LANCZOS)
 
 
-def build_hero(out, prefix, slug, disp_h, factors):
-    d = folder(prefix)
-    stand = crop(Image.open(find(d, lambda f: f in ('персонаж.png',) or f.endswith('персонаж.png'))).convert('RGBA'))
-    s = disp_h * TEX / stand.height
-    resized(stand, s).save(os.path.join(out, slug + '.png'))
-    poses = sorted(f for f in os.listdir(os.path.join(SRC, d)) if f.lower().startswith('анимация') and 'не трогать' not in f.lower())
-    for i, f in enumerate(poses[:len(factors)]):
-        pose = crop(Image.open(os.path.join(SRC, d, f)).convert('RGBA'))
-        resized(pose, s * factors[i]).save(os.path.join(out, f'{slug}_hit{i + 1}.png'))
-    print(slug, 'standing', stand.size, 'poses', len(poses))
+def sheet_frames(sheet):
+    """The 16 frames of a 4x4 sheet as {(row, col): RGBA crop + its offset}. Frames are cut by connected pieces, not by
+    the nominal grid: a raised sword or a fire trail may reach over the cell line (the elf's sabre does), and each
+    piece belongs to the cell its centre of mass lies in. Specks under 30 px are dropped (generator noise)."""
+    from scipy import ndimage
+    a = np.array(sheet.getchannel('A')) > 24
+    labels, n = ndimage.label(a, structure=np.ones((3, 3)))
+    H, W = a.shape
+    cells = {}
+    for i, (sy, sx) in enumerate(ndimage.find_objects(labels), start=1):
+        piece = labels[sy, sx] == i
+        size = int(piece.sum())
+        if size < 30:
+            continue
+        ys, xs = np.nonzero(piece)
+        cy, cx = sy.start + ys.mean(), sx.start + xs.mean()
+        key = (min(3, int(cy // (H / 4))), min(3, int(cx // (W / 4))))
+        cells.setdefault(key, []).append((sy, sx, i))
+    frames = {}
+    rgba = np.array(sheet)
+    for key, pieces in cells.items():
+        y0 = min(p[0].start for p in pieces); y1 = max(p[0].stop for p in pieces)
+        x0 = min(p[1].start for p in pieces); x1 = max(p[1].stop for p in pieces)
+        mask = np.isin(labels[y0:y1, x0:x1], [p[2] for p in pieces])
+        crop_ = rgba[y0:y1, x0:x1].copy()
+        crop_[~mask] = 0  # bits of neighbouring frames inside the box are not ours
+        frames[key] = Image.fromarray(crop_, 'RGBA')
+    return frames
+
+
+def feet_anchor(im):
+    """x of the body's centre, from the bottom fifth of the figure (the feet and legs): unlike the bounding box it does
+    not slide when an arm, a sword or a fire trail sticks out to one side."""
+    a = np.array(im.getchannel('A')) > 24
+    h = a.shape[0]
+    band = a[int(h * 0.8):]
+    xs = np.nonzero(band)[1]
+    return float(xs.mean()) if xs.size else im.width / 2
+
+
+def anchored(im, scale):
+    """Scaled frame on a canvas whose bottom edge is the feet line and whose centre column is the body (feet_anchor):
+    the game draws heroes with origin (0.5, 1), so every frame of a hero then stands on the same spot."""
+    ax = feet_anchor(im)
+    half = max(ax, im.width - ax)
+    canvas = Image.new('RGBA', (int(np.ceil(half * 2)) + 2, im.height), (0, 0, 0, 0))
+    canvas.alpha_composite(im, (int(round(half - ax)) + 1, 0))
+    # Resampled with premultiplied alpha, so glows and soft edges do not pick up a dark fringe.
+    w, h = max(1, round(canvas.width * scale)), max(1, round(canvas.height * scale))
+    return canvas.convert('RGBa').resize((w, h), Image.LANCZOS).convert('RGBA')
+
+
+def save_png(im, path):
+    """Palette PNG (256 colours, alpha kept): on pixel-art heroes nothing visible is lost and the files get ~3-4x
+    smaller — 54 hero textures load on the office laptops, so it matters."""
+    im.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(path, optimize=True)
+
+
+def build_hero_sheet(out, prefix, slug, disp_h, stance, attacks):
+    d = next(n for n in sorted(os.listdir(SHEETS)) if n == prefix or n.startswith(prefix + ' '))
+    frames = sheet_frames(Image.open(os.path.join(SHEETS, d, 'sheet.png')).convert('RGBA'))
+    if len(frames) != 16:
+        raise SystemExit(f'{d}: expected 16 frames, found {len(frames)}')
+    s = disp_h * TEX / frames[stance].height
+    save_png(anchored(frames[stance], s), os.path.join(out, slug + '.png'))
+    for i, (windup, blow) in enumerate(attacks, start=1):
+        save_png(anchored(frames[windup], s), os.path.join(out, f'{slug}_hit{i}_windup.png'))
+        save_png(anchored(frames[blow], s), os.path.join(out, f'{slug}_hit{i}.png'))
+    print(slug, 'stance', frames[stance].size, 'scale', round(s, 3), 'attacks', len(attacks))
 
 
 def build_lead(out):
@@ -202,8 +267,8 @@ if __name__ == '__main__':
     os.makedirs(args.out, exist_ok=True)
     only = set(args.only or ['heroes', 'lead', 'dragon', 'mountain', 'bg'])
     if 'heroes' in only:
-        for prefix, (slug, h, factors) in HEROES.items():
-            build_hero(args.out, prefix, slug, h, factors)
+        for prefix, (slug, h, stance, attacks) in HERO_SHEETS.items():
+            build_hero_sheet(args.out, prefix, slug, h, stance, attacks)
     if 'lead' in only:
         build_lead(args.out)
     if 'dragon' in only:

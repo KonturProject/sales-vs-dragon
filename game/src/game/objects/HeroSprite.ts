@@ -26,8 +26,9 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
     private zzz: GameObjects.Text | null = null;
     private tintColor: number;
     private defaultTexture: string;
-    private hitPoses: string[];
-    private nextHitPoseIndex = 0;
+    /** Attacks, used one after another on successive sales: the wind-up frame shown during the dash, the blow on arrival. */
+    private attacks: { windup: string; blow: string }[];
+    private nextAttackIndex = 0;
 
     constructor(scene: Scene, x: number, y: number, def: HeroDef, scaleMul = 1) {
         super(scene, x, y);
@@ -38,12 +39,14 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
         this.tintColor = Display.Color.HexStringToColor(def.color).color;
         this.defaultTexture = def.sprite;
 
-        // Alternate attack poses (`<sprite>_hit1..N`, N = def.hits), cycled
-        // round-robin across successive hits; only those that actually loaded.
-        this.hitPoses = [];
+        // Attacks `<sprite>_hit1..N` (N = def.hits), cycled round-robin across successive hits; only those that
+        // actually loaded. Each has a wind-up frame `_hitN_windup` (without one the blow is shown all the way).
+        this.attacks = [];
         for (let i = 1; i <= def.hits; i++) {
-            const key = `${def.sprite}_hit${i}`;
-            if (scene.textures.exists(key)) this.hitPoses.push(key);
+            const blow = `${def.sprite}_hit${i}`;
+            if (!scene.textures.exists(blow)) continue;
+            const windup = `${blow}_windup`;
+            this.attacks.push({ windup: scene.textures.exists(windup) ? windup : blow, blow });
         }
 
         this.sprite = scene.add.image(0, 0, def.sprite).setOrigin(0.5, 1);
@@ -240,11 +243,13 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
         // Just in front of same-row neighbours the dash passes through, still behind the row in front.
         this.setDepth(restDepth + 1);
 
-        // Pick the pose now: its width decides where the hero has to stop so the
-        // weapon/fist — not the hero's centre — touches the dragon.
-        const pose = this.hitPoses.length > 0 ? this.hitPoses[this.nextHitPoseIndex] : this.defaultTexture;
-        if (this.hitPoses.length > 0) this.nextHitPoseIndex = (this.nextHitPoseIndex + 1) % this.hitPoses.length;
-        const poseWidth = this.scene.textures.getFrame(pose).width;
+        // Pick the attack now: the blow frame's width decides where the hero has to stop so the
+        // weapon/fist/fire — not the hero's centre — touches the dragon.
+        const attack = this.attacks.length > 0
+            ? this.attacks[this.nextAttackIndex]
+            : { windup: this.defaultTexture, blow: this.defaultTexture };
+        if (this.attacks.length > 0) this.nextAttackIndex = (this.nextAttackIndex + 1) % this.attacks.length;
+        const poseWidth = this.scene.textures.getFrame(attack.blow).width;
         const strikeX = Math.max(this.baseX, HERO.STRIKE_FRONT_X - (poseWidth * s * 1.12) / 2);
         let ghostTick = 0;
 
@@ -256,7 +261,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
                 // dash to the dragon, accelerating into the blow
                 {
                     x: strikeX, scaleX: s * 1.12, scaleY: s * 0.92, angle: 6, duration: HERO.RUN_MS, ease: 'Quad.easeIn',
-                    onStart: () => this.setPose(pose),
+                    onStart: () => this.setPose(attack.windup),
                     onUpdate: () => {
                         // Low-alpha afterimage trail, throttled so it doesn't spawn one every frame.
                         if (++ghostTick % 3 !== 0) return;
@@ -275,7 +280,8 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
                         });
                     },
                     onComplete: () => {
-                        // Contact: effects at the leading edge, where the blow lands.
+                        // Contact: the blow frame (fire, glow, slash) and effects at the leading edge, where it lands.
+                        this.setPose(attack.blow);
                         const impactX = this.x + this.sprite.width * this.scaleX * 0.35;
                         const impactY = this.y - this.sprite.height * this.baseScale * 0.55;
                         emitBurst(this.scene, impactX, impactY, this.tintColor, 14);
