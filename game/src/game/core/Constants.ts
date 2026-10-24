@@ -78,7 +78,7 @@ export const HORDE = {
     TREASURE: {
         SCALE: 0.55,
         BIG: { dx: 20, dy: 14 },
-        SMALL: [{ dx: 54, dy: 10 }, { dx: -22, dy: 18 }],
+        SMALL: [{ dx: -48, dy: 12 }, { dx: -20, dy: 22 }],
         SMALL_MAX: 2,
         PILE_SMALL: [{ dx: 24, dy: 7 }, { dx: -22, dy: 9 }],
         /** The piece a goblin's fall also takes from the tents (TENT_LOOT): where it lies in the pile. */
@@ -88,11 +88,11 @@ export const HORDE = {
     },
     /** The pile of won treasure at Cruella's feet: where each goblin's big piece lands, in the order they fall. */
     LOOT: [
-        { x: 24, y: 566 },
-        { x: -32, y: 580 },
-        { x: 72, y: 588 },
-        { x: -86, y: 570 },
-        { x: 14, y: 598 },
+        { x: -16, y: 566 },
+        { x: -72, y: 580 },
+        { x: 32, y: 588 },
+        { x: -126, y: 570 },
+        { x: -26, y: 598 },
     ],
     LOOT_FLIGHT_MS: 950,
     /**
@@ -102,11 +102,11 @@ export const HORDE = {
     CAMPFIRE: { x: 1092, y: 550, scale: 0.36, FPS: 8, FRAME: 256 },
     /** Two tents and the totem of the camp (feet = bottom of the picture); textures are 2x their on-screen size. */
     /** `scale` is perspective: the nearer to the bottom of the picture, the bigger (1 = the texture's own size, 2x -> 0.5). */
-    TENTS: [{ x: 1430, y: 468, scale: 0.85 }, { x: 1385, y: 655, scale: 1.2 }],
+    TENTS: [{ x: 1465, y: 452, scale: 0.8 }, { x: 1420, y: 695, scale: 1.3 }],
     /** One piece of treasure lies by the tents for each goblin (index = the goblin's); it flies to Cruella with that goblin's fall. World px. */
-    TENT_LOOT: [{ x: 1335, y: 482 }, { x: 1478, y: 480 }, { x: 1300, y: 586 }, { x: 1462, y: 602 }, { x: 1385, y: 628 }],
+    TENT_LOOT: [{ x: 1335, y: 482 }, { x: 1478, y: 480 }, { x: 1262, y: 606 }, { x: 1268, y: 676 }, { x: 1300, y: 716 }],
     /** Two totems on either side of the road: the gate of the camp. */
-    TOTEMS: [{ x: 860, y: 470, scale: 0.85 }, { x: 880, y: 668, scale: 1.2 }],
+    TOTEMS: [{ x: 915, y: 452, scale: 0.78 }, { x: 820, y: 708, scale: 1.25 }],
     /**
      * The warm light of the campfire on the ground: a soft additive glow that lies *under* every character (depth
      * below them, so it brightens the forest and the road, never the characters), flickering with the fire's own frames.
@@ -144,6 +144,9 @@ export function blowsFor(delta: number, avgCheck = 0): number {
     return Math.min(BLOWS.MAX, BLOWS.MIN + Math.max(0, Math.floor(delta / BLOWS.STEP_DELTA)));
 }
 
+/** The dark ovals on the ground under every character (systems/GroundShadow.ts). Ground only — the characters carry no shadow/glow. */
+export const GROUND_SHADOW = { ALPHA: 0.55, FLATNESS: 0.24, HERO_WIDTH: 0.72, GOBLIN_WIDTH: 0.55, CHIEF_WIDTH: 0.5 } as const;
+
 export const HERO = {
     /**
      * Where each department hero stands (feet), in roster order left -> right.
@@ -174,10 +177,12 @@ export const HERO = {
      * (Horde.strikeFrontX: the front of the nearest goblin still standing, then of the chief).
      */
     STRIKE_FRONT_X: 870,
+    /** The leading edge of the blow reaches this far *into* the target (past its front edge), so the fist/weapon visibly lands on the body. */
+    STRIKE_OVERLAP: 40,
     /** How far the hero steps back in the wind-up, px. */
     WINDUP_BACK: 24,
     /** Branch lead (Cruella) stands apart from the department heroes, far left. Her train makes her sprite wide, hence the smaller scale. */
-    LEAD: { x: -40, y: 540, scale: 0.95 },
+    LEAD: { x: -70, y: 540, scale: 0.95 },
 } as const;
 
 /**
@@ -241,9 +246,9 @@ export const HUD = {
         stroke: '#1a0d2b',
     },
     /** The leaderboard's panel (top-left, stretched sideways to WIDTH x HEIGHT) and the room its rows get inside the picture. */
-    PANEL: { X: 8, Y: 124, WIDTH: 340, HEIGHT: 190, ROWS_X: 56, ROWS_Y: 35, ROWS_WIDTH: 205 },
+    PANEL: { X: 8, Y: 124, WIDTH: 340, HEIGHT: 190, ROWS_X: 56, ROWS_Y: 35, ROWS_WIDTH: 186 },
     /** The victory banner: the big frame, its centre, and the dark fill behind its text. */
-    BANNER: { X: 800, Y: 236, WIDTH: 400 },
+    BANNER: { X: 800, Y: 252, WIDTH: 390 },
 } as const;
 
 /**

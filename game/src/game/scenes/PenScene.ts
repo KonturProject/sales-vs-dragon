@@ -41,7 +41,7 @@ export class PenScene extends Scene {
         this.cameras.main.setBackgroundColor('#08090f');
 
         // Forest with the face-tree behind the heroes (tools/build-background.py), covering the whole zoomed-out view.
-        this.add.image(WORLD.X0 + WORLD.W / 2, WORLD.Y0 + WORLD.H / 2, 'bg_forest').setDisplaySize(WORLD.W, WORLD.H).setDepth(-10);
+        this.add.image(WORLD.X0 + WORLD.W / 2, WORLD.Y0 + WORLD.H / 2, 'bg_forest').setDisplaySize(WORLD.W * 1.04, WORLD.H * 1.04).setDepth(-10); // 4 % bleed: a camera shake must not show the edge
 
         new CampProps(this);
         this.horde = new Horde(this);

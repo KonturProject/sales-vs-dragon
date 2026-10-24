@@ -1,6 +1,7 @@
 import { GameObjects, Scene, TintModes, Tweens } from 'phaser';
 import hordeConfig from '../config/horde.json';
-import { BREATH, DAYS, DRAGON, HORDE } from '../core/Constants';
+import { BREATH, DAYS, DRAGON, GROUND_SHADOW, HORDE } from '../core/Constants';
+import { createGroundShadow } from '../systems/GroundShadow';
 import { emitBurst, emitCoinBurst, emitShockwaveRing, emitSparkles } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 import { Firelight } from './Firelight';
@@ -89,6 +90,7 @@ interface LootPiece {
 
 class Goblin implements Breather {
     readonly sprite: GameObjects.Sprite;
+    private readonly shadow: GameObjects.Image;
     alive = true;
     private readonly home: { x: number; y: number };
     /** Every goblin is drawn the same height (HORDE.GOBLIN_HEIGHT), whatever its sheet's size. */
@@ -101,6 +103,7 @@ class Goblin implements Breather {
         this.home = HORDE.GOBLINS[index];
         this.sprite = scene.add.sprite(this.home.x, this.home.y, animKey(def, 'idle'), 0)
             .setOrigin(def.originX, def.originY).setScale(this.scale).setDepth(this.home.y);
+        this.shadow = createGroundShadow(scene, this.home.x, this.home.y, HORDE.GOBLIN_HEIGHT * GROUND_SHADOW.GOBLIN_WIDTH);
         this.rollLoot();
     }
 
@@ -178,11 +181,13 @@ class Goblin implements Breather {
         this.reset();
         this.alive = true;
         this.sprite.setVisible(true).setAlpha(animate ? 0 : 1);
+        this.shadow.setVisible(true).setAlpha(animate ? 0 : GROUND_SHADOW.ALPHA);
         if (animate) this.rollLoot();
         else this.lootAtSide();
         if (animate) {
             const images = this.loot.map(p => p.image.setAlpha(0));
             this.scene.tweens.add({ targets: [this.sprite, ...images], alpha: 1, duration: 500 });
+            this.scene.tweens.add({ targets: this.shadow, alpha: GROUND_SHADOW.ALPHA, duration: 500 });
         }
     }
 
@@ -191,6 +196,7 @@ class Goblin implements Breather {
         this.reset();
         this.alive = false;
         this.sprite.setVisible(false);
+        this.shadow.setVisible(false);
         this.lootInPile();
     }
 
@@ -226,7 +232,10 @@ class Goblin implements Breather {
         this.sprite.setTint(0xff3b1f).setTintMode(TintModes.FILL);
         this.scene.time.delayedCall(120, () => this.sprite.clearTint());
 
-        const fadeOut = () => this.scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 500, duration: 600, onComplete: () => this.sprite.setVisible(false) });
+        const fadeOut = () => {
+            this.scene.tweens.add({ targets: this.shadow, alpha: 0, delay: 500, duration: 600, onComplete: () => this.shadow.setVisible(false) });
+            return this.scene.tweens.add({ targets: this.sprite, alpha: 0, delay: 500, duration: 600, onComplete: () => this.sprite.setVisible(false) });
+        };
         const played = playFrames(this.sprite, this.def, 'die', 900, fadeOut);
         if (!played) {
             // No death sheet: it topples backward (away from the heroes) about its feet and fades.
@@ -273,6 +282,7 @@ class Chief implements Breather {
     constructor(private scene: Scene, readonly def: CreatureDef) {
         const c = HORDE.CHIEF;
         this.scale = c.height / def.topPx;
+        createGroundShadow(scene, c.x, c.y, c.height * GROUND_SHADOW.CHIEF_WIDTH);
         this.sprite = scene.add.sprite(c.x, c.y, animKey(def, 'idle'), 0).setOrigin(def.originX, def.originY).setScale(this.scale).setDepth(c.y);
     }
 

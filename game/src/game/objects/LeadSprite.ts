@@ -1,5 +1,6 @@
 import { GameObjects, Scene, Tweens } from 'phaser';
-import { BREATH, HERO } from '../core/Constants';
+import { BREATH, GROUND_SHADOW, HERO } from '../core/Constants';
+import { createGroundShadow } from '../systems/GroundShadow';
 import { emitSparkles, Swayable } from '../systems/Fx';
 import { Breather } from '../systems/BreathRelay';
 
@@ -25,6 +26,7 @@ export class LeadSprite extends GameObjects.Container implements Swayable, Breat
         this.sprite = scene.add.image(0, 0, textureKey).setOrigin(0.5, 1);
         this.add(this.sprite);
         this.setScale(this.baseScale);
+        createGroundShadow(scene, x, y, this.sprite.width * this.baseScale * GROUND_SHADOW.HERO_WIDTH * 0.8);
         scene.add.existing(this);
     }
 

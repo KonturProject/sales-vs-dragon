@@ -40,7 +40,7 @@ export function emitSparkles(scene: Scene, x: number, y: number, spread: number,
     }
 }
 
-const CONFETTI_COLORS = [0x2fd0e0, 0x36e08a, 0xffe89a, 0xff6688, 0xc9a227];
+const CONFETTI_COLORS = [0xff7a1a, 0x8ee52c, 0x9149ca, 0xfff1d6, 0xffc864];
 
 /** Full-screen falling confetti burst for the weekly-goal finale. */
 export function emitConfettiBurst(scene: Scene, count = 120) {

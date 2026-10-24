@@ -1,4 +1,4 @@
-import { Display, GameObjects, Scene } from 'phaser';
+import { Display, GameObjects, Geom, Scene } from 'phaser';
 import { EventBus, GameEvents, ProgressChangedPayload, FetchErrorPayload, DragonHeadLostPayload, DragonDefeatedPayload, MoneyInPayload, AdminCommandPayload } from '../core/EventBus';
 import { GameState } from '../core/GameState';
 import { fitCameraToGame } from '../core/Render';
@@ -21,7 +21,7 @@ const GOTHIC = HUD.FONT;
 const STATUS_X = GAME.WIDTH - 16;
 const STATUS_Y = GAME.HEIGHT - 16;
 const STATUS_TICK_MS = 30000;
-const MUTE_X = STATUS_X - 190;
+const MUTE_X = 28; // bottom-left: the offline message grows to the left of the status dot and must not run into it
 const MUTE_Y = GAME.HEIGHT - 16;
 
 export class HUDScene extends Scene {
@@ -32,7 +32,7 @@ export class HUDScene extends Scene {
     private banner: GameObjects.Container | null = null;
     private statusDot!: GameObjects.Arc;
     private statusText!: GameObjects.Text;
-    private muteIcon!: GameObjects.Text;
+    private muteIcon!: GameObjects.Graphics;
     private leaderboard!: Leaderboard;
     private displayedRatio = 0;
     private displayedTotal = 0;
@@ -73,19 +73,18 @@ export class HUDScene extends Scene {
         this.labelPlate = this.add.graphics().setDepth(3.8);
 
         this.statusText = this.add.text(STATUS_X - 12, STATUS_Y, '', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '12px',
+            fontFamily: GOTHIC,
+            fontStyle: 'italic',
+            fontSize: '13px',
             resolution: GAME.RENDER_SCALE,
-            color: '#8fb8d9',
-        }).setOrigin(1, 0.5).setAlpha(0.9);
+            color: HUD.COLORS.label,
+        }).setOrigin(1, 0.5).setAlpha(0.8);
         this.statusDot = this.add.circle(STATUS_X, STATUS_Y, 4, 0x36e08a);
         this.renderStatus();
 
-        this.muteIcon = this.add.text(MUTE_X, MUTE_Y, '', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            resolution: GAME.RENDER_SCALE,
-        }).setOrigin(0.5).setAlpha(0.9).setInteractive({ useHandCursor: true });
+        this.muteIcon = this.add.graphics({ x: MUTE_X, y: MUTE_Y }).setAlpha(0.9)
+            .setInteractive(new Geom.Rectangle(-12, -12, 24, 24), Geom.Rectangle.Contains);
+        this.muteIcon.input!.cursor = 'pointer';
         this.renderMuteIcon();
         this.muteIcon.on('pointerdown', () => {
             AudioSystem.init();
@@ -178,8 +177,21 @@ export class HUDScene extends Scene {
         });
     }
 
+    /** A small speaker in the HUD's colours (drawn, not an emoji): sound waves when on, a cross when muted. */
     private renderMuteIcon() {
-        this.muteIcon.setText(AudioSystem.isMuted ? '🔇' : '🔊');
+        const g = this.muteIcon;
+        const color = Display.Color.HexStringToColor(HUD.COLORS.label).color;
+        g.clear();
+        g.fillStyle(color, 1);
+        g.fillRect(-8, -3, 4, 6);
+        g.fillTriangle(-4, -3, 2, -8, 2, 8).fillTriangle(-4, -3, -4, 3, 2, 8);
+        g.lineStyle(2, color, 1);
+        if (AudioSystem.isMuted) {
+            g.lineBetween(5, -4, 11, 4).lineBetween(11, -4, 5, 4);
+        } else {
+            g.beginPath().arc(2, 0, 6, -0.9, 0.9).strokePath();
+            g.beginPath().arc(2, 0, 10, -0.9, 0.9).strokePath();
+        }
     }
 
     private renderStatus() {
@@ -276,8 +288,8 @@ export class HUDScene extends Scene {
             const centre = TRACK_X + (TRACK_WIDTH * (d - 0.5)) / DAYS;
             this.add.text(centre, BAR_Y + BAR_HEIGHT + 20, `день ${d}`, {
                 fontFamily: GOTHIC,
-                fontStyle: 'italic',
-                fontSize: '12px',
+                fontStyle: 'bold',
+                fontSize: '14px',
                 resolution: GAME.RENDER_SCALE,
                 color: HUD.COLORS.label,
             }).setOrigin(0.5, 0).setStroke(HUD.COLORS.stroke, 3).setDepth(4);
@@ -299,21 +311,33 @@ export class HUDScene extends Scene {
         const bed = this.add.graphics();
         bed.fillStyle(0x120a1c, 0.92);
         bed.fillRoundedRect(frame.width * k * (10 / 1120) - holeW / 2, frame.height * k * (3 / 728) - holeH / 2, holeW, holeH, 10);
-        const title = this.add.text(0, -18, 'ОТДЕЛЫ ПОБЕДИЛИ!', {
+        const title = this.add.text(0, -30, 'ОТДЕЛЫ ПОБЕДИЛИ!', {
             fontFamily: GOTHIC,
             fontStyle: 'bold',
-            fontSize: '23px',
+            fontSize: '22px',
             resolution: GAME.RENDER_SCALE,
             color: '#ffc864',
         }).setOrigin(0.5).setStroke('#3a1500', 6);
-        const sub = this.add.text(0, 22, 'План недели выполнен', {
+        const sub = this.add.text(0, 8, 'План недели выполнен', {
             fontFamily: GOTHIC,
             fontStyle: 'bold',
             fontSize: '19px',
             resolution: GAME.RENDER_SCALE,
             color: '#b6f23a',
         }).setOrigin(0.5).setStroke(HUD.COLORS.stroke, 4);
-        this.banner = this.add.container(cx, cy, [bed, frame, title, sub]).setDepth(3000).setAlpha(0).setScale(0.6);
+        // A third line so the frame's hole is filled and says something: the week's best department.
+        const best = Object.entries(GameState.byRop).sort((a, b) => b[1] - a[1])[0];
+        const lines: GameObjects.Text[] = [title, sub];
+        if (best && best[1] > 0) {
+            lines.push(this.add.text(0, 42, `Лучший отдел: ${best[0]} — ${Math.round(best[1]).toLocaleString('ru-RU')} ₽`, {
+                fontFamily: GOTHIC,
+                fontStyle: 'italic',
+                fontSize: '15px',
+                resolution: GAME.RENDER_SCALE,
+                color: HUD.COLORS.text,
+            }).setOrigin(0.5).setStroke(HUD.COLORS.stroke, 3));
+        }
+        this.banner = this.add.container(cx, cy, [bed, frame, ...lines]).setDepth(3000).setAlpha(0).setScale(0.6);
         this.tweens.add({ targets: this.banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut' });
         this.tweens.add({ targets: this.banner, scale: 1.03, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 500 });
     }

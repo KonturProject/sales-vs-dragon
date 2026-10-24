@@ -1,7 +1,8 @@
 import { Display, GameObjects, Scene } from 'phaser';
 import { HeroDef } from '../systems/RosterConfig';
-import { BREATH, GAME, HERO, blowsFor } from '../core/Constants';
+import { BREATH, GAME, GROUND_SHADOW, HERO, blowsFor } from '../core/Constants';
 import { GameState } from '../core/GameState';
+import { createGroundShadow, placeGroundShadow } from '../systems/GroundShadow';
 import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 import { Breather } from '../systems/BreathRelay';
@@ -31,6 +32,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
     /** Attacks, used one after another on successive sales: the wind-up frame shown during the dash, the blow on arrival. */
     private attacks: { windup: string; blow: string }[];
     private nextAttackIndex = 0;
+    private shadow: GameObjects.Image;
     /** `<sprite>_breath2..N` that actually loaded: the weight-shifting loop after the stance (frame 1). */
     private breathFrames: string[] = [];
 
@@ -61,7 +63,21 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
         this.add(this.sprite);
         this.setScale(this.baseScale);
 
+        this.shadow = createGroundShadow(scene, x, y, 10);
+        scene.events.on('update', this.syncShadow, this);
+        this.once('destroy', () => scene.events.off('update', this.syncShadow, this));
         scene.add.existing(this);
+    }
+
+    /** Keeps the ground oval under the hero: it follows the run, and stretches along a hero lying on the floor. */
+    private syncShadow() {
+        if (this.posture === 'down') {
+            const [a, b] = this.lyingSpan(this.lean);
+            placeGroundShadow(this.shadow, (a + b) / 2, this.baseY, (b - a) * 0.9);
+        } else {
+            placeGroundShadow(this.shadow, this.x, this.baseY, this.sprite.width * this.baseScale * GROUND_SHADOW.HERO_WIDTH);
+        }
+        this.shadow.setDepth(this.baseY - 0.4);
     }
 
     canSway() {
@@ -281,13 +297,15 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
             return attack;
         });
         const poseWidth = this.scene.textures.getFrame(series[0].blow).width;
-        const strikeX = Math.max(this.baseX, strikeFrontX - (poseWidth * s * 1.12) / 2);
+        // The blow frame's canvas is centred on the body, so half its width is the reach forward: stop that far before the target's
+        // front edge plus STRIKE_OVERLAP, and the weapon/fist ends up on the target's body, not in the air in front of it.
+        const strikeX = Math.max(this.baseX, strikeFrontX + HERO.STRIKE_OVERLAP - (poseWidth * s) / 2);
         let ghostTick = 0;
 
         // Contact: the blow frame (fire, glow, slash) and effects at the leading edge, where it lands.
         const land = (index: number) => {
             this.setPose(series[index].blow);
-            const impactX = this.x + this.sprite.width * this.scaleX * 0.35;
+            const impactX = Math.max(this.x, strikeFrontX + 14);
             const impactY = this.y - this.sprite.height * this.baseScale * 0.55;
             const first = index === 0;
             emitBurst(this.scene, impactX, impactY, this.tintColor, first ? 14 : 8);
@@ -316,14 +334,14 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
                     onStart: () => this.setPose(series[0].windup),
                     onUpdate: () => {
                         // Low-alpha afterimage trail, throttled so it doesn't spawn one every frame.
-                        if (++ghostTick % 3 !== 0) return;
+                        if (++ghostTick % 4 !== 0) return;
                         const ghost = this.scene.add.image(this.x, this.y, this.sprite.texture.key)
                             .setOrigin(0.5, 1)
                             .setScale(this.scaleX, this.scaleY)
                             .setAngle(this.angle)
-                            .setAlpha(0.22)
+                            .setAlpha(0.15)
                             .setTint(this.tintColor)
-                            .setDepth(restDepth - 1);
+                            .setDepth(400); // under every hero (feet y >= 450), over the ground: the trail never smears over a neighbour
                         this.scene.tweens.add({
                             targets: ghost,
                             alpha: 0,
