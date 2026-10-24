@@ -20,7 +20,7 @@ export class Leaderboard extends GameObjects.Container {
         const groundHeroes = RosterConfig.heroes.filter(h => !h.lead);
 
         const panel = scene.add.image(0, 0, 'hud_panel_small').setOrigin(0, 0);
-        panel.setScale(PANEL.WIDTH / panel.width);
+        panel.setDisplaySize(PANEL.WIDTH, PANEL.HEIGHT);
         this.add(panel);
 
         groundHeroes.forEach((def, i) => {

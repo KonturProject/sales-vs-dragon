@@ -117,6 +117,13 @@ class Goblin implements Breather {
             at: i === 0 ? T.BIG : T.SMALL[i - 1],
             pile: i === 0 ? { dx: 0, dy: 0 } : T.PILE_SMALL[i - 1],
         }));
+        // Plus one piece lying by the tents, taken along when this goblin falls.
+        const spot = HORDE.TENT_LOOT[this.index];
+        this.loot.push({
+            image: this.scene.add.image(0, 0, pick(HORDE_DEFS.treasures).key).setOrigin(0.5, 1).setScale(T.SCALE),
+            at: { dx: spot.x - this.home.x, dy: spot.y - this.home.y },
+            pile: T.PILE_TENT,
+        });
         this.lootAtSide();
     }
 
@@ -139,7 +146,7 @@ class Goblin implements Breather {
         return this.home.y - this.def.topPx * this.scale * 0.55;
     }
 
-    /** At the goblin's feet, in front of it. */
+    /** At the goblin's feet, in front of it (the tent piece: by the tents). */
     private lootAtSide() {
         this.loot.forEach(({ image, at }) => {
             image.setPosition(this.home.x + at.dx, this.home.y + at.dy).setDepth(this.home.y + at.dy)

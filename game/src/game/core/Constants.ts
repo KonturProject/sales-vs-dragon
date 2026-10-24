@@ -81,6 +81,8 @@ export const HORDE = {
         SMALL: [{ dx: 54, dy: 10 }, { dx: -22, dy: 18 }],
         SMALL_MAX: 2,
         PILE_SMALL: [{ dx: 24, dy: 7 }, { dx: -22, dy: 9 }],
+        /** The piece a goblin's fall also takes from the tents (TENT_LOOT): where it lies in the pile. */
+        PILE_TENT: { dx: 2, dy: 15 },
         /** Gap between the pieces of one goblin taking off. */
         FLIGHT_STAGGER_MS: 130,
     },
@@ -101,6 +103,8 @@ export const HORDE = {
     /** Two tents and the totem of the camp (feet = bottom of the picture); textures are 2x their on-screen size. */
     /** `scale` is perspective: the nearer to the bottom of the picture, the bigger (1 = the texture's own size, 2x -> 0.5). */
     TENTS: [{ x: 1430, y: 468, scale: 0.85 }, { x: 1385, y: 655, scale: 1.2 }],
+    /** One piece of treasure lies by the tents for each goblin (index = the goblin's); it flies to Cruella with that goblin's fall. World px. */
+    TENT_LOOT: [{ x: 1335, y: 482 }, { x: 1478, y: 480 }, { x: 1300, y: 586 }, { x: 1462, y: 602 }, { x: 1385, y: 628 }],
     /** Two totems on either side of the road: the gate of the camp. */
     TOTEMS: [{ x: 860, y: 470, scale: 0.85 }, { x: 880, y: 668, scale: 1.2 }],
     /**
@@ -224,8 +228,8 @@ export const HUD = {
         label: '#ffb35c',
         stroke: '#1a0d2b',
     },
-    /** The leaderboard's panel (top-left) and the room its rows get inside the picture. */
-    PANEL: { X: 8, Y: 150, WIDTH: 262, ROWS_X: 34, ROWS_Y: 31, ROWS_WIDTH: 146 },
+    /** The leaderboard's panel (top-left, stretched sideways to WIDTH x HEIGHT) and the room its rows get inside the picture. */
+    PANEL: { X: 8, Y: 110, WIDTH: 340, HEIGHT: 190, ROWS_X: 56, ROWS_Y: 35, ROWS_WIDTH: 205 },
     /** The victory banner: the big frame, its centre, and the dark fill behind its text. */
     BANNER: { X: 800, Y: 236, WIDTH: 400 },
 } as const;
