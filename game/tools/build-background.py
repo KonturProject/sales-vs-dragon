@@ -87,6 +87,28 @@ def build_forest():
     print('bg_forest.jpg', wide.size, VARIANT, 'tree at x', TREE_X)
 
 
+FG_ROWS = (480, 625)    # the part of the 'grasses' layer used: low fronds and the edge of the dark ground below them
+FG_EXTRA_GROUND = 60    # more dark ground added under it, so the strip reaches the bottom of the stage
+FG_DARKEN = 0.30        # the foreground is darker than everything behind it (it is out of the firelight)
+
+
+def build_foreground():
+    """A strip of dark plants along the bottom edge of the stage (drawn in front of everything, PenScene): the empty band under the
+    heroes' feet gets depth. Built from the pack's own 'grasses' layer, widened like the background (mirrored edges)."""
+    layer = Image.open(os.path.join(SRC, 'Battleground3', VARIANT, 'grasses.png')).convert('RGBA').crop((0, FG_ROWS[0], 1920, FG_ROWS[1]))
+    world_w = LOGICAL[0] / WORLD_ZOOM
+    cw = round(world_w * PX_PER_UNIT)
+    left = round((cw - layer.width) / 2)
+    arr = np.asarray(layer)
+    ground = np.repeat(arr[-1:], FG_EXTRA_GROUND, axis=0)   # the last row is solid dark ground: continue it downwards
+    arr = np.concatenate([arr, ground], axis=0)
+    arr = np.pad(arr, ((0, 0), (left, cw - layer.width - left), (0, 0)), mode='reflect')
+    rgb = arr[..., :3].astype(np.float32) * FG_DARKEN * np.array(TINT, dtype=np.float32)
+    out = np.dstack([np.clip(rgb, 0, 255).astype(np.uint8), arr[..., 3]])
+    Image.fromarray(out, 'RGBA').save(os.path.join(OUT, 'fg_plants.png'), optimize=True)
+    print('fg_plants.png', (cw, arr.shape[0]))
+
+
 def build_campfire():
     im = Image.open(os.path.join(SRC, 'CampFireFinished.png')).convert('RGBA')
     im = im.resize((im.width * CAMPFIRE_UPSCALE, im.height * CAMPFIRE_UPSCALE), Image.NEAREST)
@@ -96,4 +118,5 @@ def build_campfire():
 
 if __name__ == '__main__':
     build_forest()
+    build_foreground()
     build_campfire()

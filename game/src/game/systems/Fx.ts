@@ -1,5 +1,5 @@
 import { GameObjects, Scene } from 'phaser';
-import { GAME } from '../core/Constants';
+import { GAME, HUD } from '../core/Constants';
 
 /** Tweened-circle particle burst — no particle plugin needed. */
 export function emitBurst(scene: Scene, x: number, y: number, color: number, count = 10) {
@@ -90,18 +90,19 @@ export function emitShockwaveRing(scene: Scene, x: number, y: number, color: num
     return ring;
 }
 
-const ONOMATOPOEIA = ['БАМ!', 'ХРЯСЬ!', 'БАХ!', 'ХЛОП!'];
+const ONOMATOPOEIA = ['ВЖУХ!', 'БАМ!', 'ХРЯСЬ!', 'БАХ!', 'ХЛОП!'];
 
-/** Comic-book impact text, Reserved for big payments — see HeroSprite.playHit (a full-length blow series). */
+/** Comic-book impact text («ВЖУХ!»): for an ordinary or big payment — see HeroSprite.playHit (a series of three blows or more). */
 export function emitComicText(scene: Scene, x: number, y: number): GameObjects.Text {
     const text = ONOMATOPOEIA[Math.floor(Math.random() * ONOMATOPOEIA.length)];
+    // The HUD's look (the banner title): a warm gold with a dark brown edge, in the Halloween palette.
     const t = scene.add.text(x, y, text, {
-        fontFamily: 'Arial Black, Arial, sans-serif',
-        fontSize: '26px',
+        fontFamily: HUD.FONT,
+        fontSize: '36px',
         resolution: GAME.RENDER_SCALE,
         fontStyle: 'bold',
-        color: '#fff5f5',
-    }).setOrigin(0.5).setAngle(-8).setStroke('#d23a3a', 5);
+        color: '#ffc864',
+    }).setOrigin(0.5).setAngle(-8).setStroke('#3a1500', 7).setDepth(1600);
     scene.tweens.add({
         targets: t,
         y: y - 30,

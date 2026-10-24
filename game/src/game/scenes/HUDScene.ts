@@ -29,6 +29,7 @@ export class HUDScene extends Scene {
     private label!: GameObjects.Text;
     private labelPlate!: GameObjects.Graphics;
     private headsText!: GameObjects.Text;
+    private headsPlate!: GameObjects.Graphics;
     private banner: GameObjects.Container | null = null;
     private statusDot!: GameObjects.Arc;
     private statusText!: GameObjects.Text;
@@ -61,6 +62,7 @@ export class HUDScene extends Scene {
             resolution: GAME.RENDER_SCALE,
             color: HUD.COLORS.accent,
         }).setOrigin(1, 0).setStroke(HUD.COLORS.stroke, 4).setDepth(4);
+        this.headsPlate = this.add.graphics().setDepth(3.9);
         this.renderHeads(GameState.headsRemaining);
 
         this.label = this.add.text(TRACK_X + TRACK_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, '', {
@@ -259,7 +261,12 @@ export class HUDScene extends Scene {
 
     private renderHeads(heads: number) {
         this.shownHeads = heads;
-        this.headsText.setText(heads > 0 ? `ГОБЛИНОВ: ${heads} / ${DAYS}` : 'ОРДА ПОВЕРЖЕНА');
+        this.headsText.setText(heads > 0 ? `ОСТАЛОСЬ: ${heads} из ${DAYS}` : 'ОРДА ПОВЕРЖЕНА');
+        // The same dark plate as the sum on the bar, so the counter does not float on the bare forest.
+        const b = this.headsText.getBounds();
+        this.headsPlate.clear();
+        this.headsPlate.fillStyle(HUD.COLORS.labelPlate, 0.85).fillRoundedRect(b.x - 12, b.y - 5, b.width + 24, b.height + 10, 12);
+        this.headsPlate.lineStyle(1, HUD.COLORS.dividerLight, 0.8).strokeRoundedRect(b.x - 12, b.y - 5, b.width + 24, b.height + 10, 12);
     }
 
     /**

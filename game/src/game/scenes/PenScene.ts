@@ -44,6 +44,11 @@ export class PenScene extends Scene {
         this.add.image(WORLD.X0 + WORLD.W / 2, WORLD.Y0 + WORLD.H / 2, 'bg_forest').setDisplaySize(WORLD.W * 1.04, WORLD.H * 1.04).setDepth(-10); // 4 % bleed: a camera shake must not show the edge
 
         new CampProps(this);
+        // Dark plants along the bottom edge, in front of everything: depth for the otherwise empty band under the heroes' feet.
+        if (this.textures.exists('fg_plants')) {
+            const fg = this.add.image(WORLD.X0 + WORLD.W / 2, WORLD.Y0 + WORLD.H * 1.02, 'fg_plants').setOrigin(0.5, 1).setDepth(2000);
+            fg.setScale((WORLD.W * 1.04) / fg.width);
+        }
         this.horde = new Horde(this);
 
         // Depth follows the feet's y so the front row draws over the back row.

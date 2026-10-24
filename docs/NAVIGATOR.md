@@ -145,7 +145,7 @@ Phaser, список сцен Boot→Preloader→PenScene+HUDScene, PowerSaver).
 | `horde/goblin1..5_{idle,hurt,die,attack}.png` | `build-horde.py` | Horde (у Метателя `goblin4` нет hurt/die — код-замена) |
 | `horde/goblin_chief_{idle,hurt,taunt,sit}.png` | `build-horde.py` (sit из `goblin-chief/sit.png`) | Horde (Chief) |
 | `horde/loot_*.png` (11) | `build-horde.py` ← `gold-bag/` | Horde (сокровища, куча у Круэллы) |
-| `bg_forest.jpg` (2667×1500), `campfire.png` | `build-background.py` | PenScene (фон), Horde (костёр) |
+| `bg_forest.jpg` (2667×1500), `fg_plants.png` (передний план), `campfire.png` | `build-background.py` | PenScene (фон и передний план), Horde (костёр) |
 | `camp_tent.png`, `camp_totem.png` | `build-camp.py` | CampProps |
 | `hero_*_breath2..4.png` (+ `hero_*.png` = кадр 1) | `build-sprites.py --only stance` ← `stance-sheets/` | HeroSprite, LeadSprite |
 | `public/assets/hud/hud_*.png` (5) | `build-hud.py` | HUDScene, Leaderboard |

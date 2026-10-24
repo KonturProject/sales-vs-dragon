@@ -5,7 +5,7 @@ import { HORDE_DEFS, animKey } from '../objects/Horde';
 import { fitCameraToGame } from '../core/Render';
 
 /** Character, horde and background textures (everything except generated text canvases). */
-const SMOOTH_TEXTURE_KEY = /^(hero_|lead_|goblin|loot_|campfire|bg_forest|hud_|camp_)/;
+const SMOOTH_TEXTURE_KEY = /^(hero_|lead_|goblin|loot_|campfire|bg_forest|hud_|camp_|fg_)/;
 
 /**
  * Loads the real cropped sprites from public/assets/sprites/. Any file that
@@ -28,6 +28,7 @@ export class Preloader extends Scene {
         this.load.setPath('assets/sprites');
         // Forest and campfire: tools/build-background.py.
         this.load.image('bg_forest', 'bg_forest.jpg');
+        this.load.image('fg_plants', 'fg_plants.png'); // dark plants along the bottom edge, in front of everything
         this.load.spritesheet('campfire', 'campfire.png', { frameWidth: HORDE.CAMPFIRE.FRAME, frameHeight: HORDE.CAMPFIRE.FRAME });
         // Tent and totem of the goblin camp (tools/build-camp.py).
         this.load.image('camp_tent', 'camp_tent.png');
@@ -114,7 +115,7 @@ export class Preloader extends Scene {
 
         // Attack poses are optional variety (HeroSprite checks texture existence
         // before using them), so a missing one gets no placeholder.
-        if (/_(hit\d+(_windup)?|breath\d+)$/.test(key)) return;
+        if (/_(hit\d+(_windup)?|breath\d+)$/.test(key) || key === 'fg_plants') return;
 
         const g = this.make.graphics({ x: 0, y: 0 });
 
