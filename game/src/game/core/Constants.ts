@@ -60,16 +60,16 @@ export const HORDE = {
      * side of the campfire (CAMPFIRE), the back ones higher up (perspective). The chief stands behind the fire.
      */
     GOBLINS: [
-        { x: 930, y: 545 },
-        { x: 1005, y: 585 },
-        { x: 1005, y: 505 },
-        { x: 1180, y: 600 },
-        { x: 1180, y: 484 },
+        { x: 930, y: 548 },
+        { x: 1000, y: 600 },
+        { x: 1050, y: 498 },
+        { x: 1165, y: 602 },
+        { x: 1225, y: 500 },
     ],
     /** On-screen height of every goblin, whatever its sheet's frame size (scale = height / the sheet's `topPx`), world px. A hero is ~195. */
     GOBLIN_HEIGHT: 170,
     /** The chief is half as tall again as a hero (a hero is ~215 world px). */
-    CHIEF: { x: 1255, y: 478, height: 330 },
+    CHIEF: { x: 1290, y: 478, height: 330 },
     /**
      * Each goblin's treasure, picked at random (again every new week): one big piece and up to SMALL_MAX small ones
      * at its feet, in front of it (behind it the goblins standing in front would hide it). Offsets from the goblin's
@@ -106,7 +106,7 @@ export const HORDE = {
     /** One piece of treasure lies by the tents for each goblin (index = the goblin's); it flies to Cruella with that goblin's fall. World px. */
     TENT_LOOT: [{ x: 1335, y: 482 }, { x: 1478, y: 480 }, { x: 1262, y: 606 }, { x: 1268, y: 676 }, { x: 1300, y: 716 }],
     /** Two totems on either side of the road: the gate of the camp. */
-    TOTEMS: [{ x: 915, y: 452, scale: 0.78 }, { x: 820, y: 708, scale: 1.25 }],
+    TOTEMS: [{ x: 860, y: 452, scale: 0.78 }, { x: 820, y: 708, scale: 1.25 }],
     /**
      * The warm light of the campfire on the ground: a soft additive glow that lies *under* every character (depth
      * below them, so it brightens the forest and the road, never the characters), flickering with the fire's own frames.
@@ -230,6 +230,8 @@ export const HUD = {
     PICTURE_SCALE: 0.5,
     /** Gothic-looking fonts that exist on every machine; replace with a bundled Halloween font when one is chosen. */
     FONT: 'Georgia, "Times New Roman", serif',
+    /** For amounts: Georgia's old-style figures make «0» look like «o», these have lining figures. */
+    FONT_NUM: '"Palatino Linotype", Cambria, "Times New Roman", serif',
     COLORS: {
         /** The fill: a dark acid-green base, a lighter upper half and a pale highlight line (flat shapes, no gradient seam). */
         fillBase: 0x4fae14,

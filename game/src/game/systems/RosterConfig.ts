@@ -11,6 +11,8 @@ export interface HeroDef {
     hits: number;
     /** Frames of the weight-shifting stance loop: `<sprite>` is frame 1, `<sprite>_breath2..N` the rest (tools/build-sprites.py, stance). */
     breath: number;
+    /** Where the head is in the stance picture, [x, y, w, h] in texture px (tools/measure-head-icons.py): the leaderboard's icon. */
+    icon?: [number, number, number, number];
 }
 
 const heroes = heroRoster.heroes as HeroDef[];

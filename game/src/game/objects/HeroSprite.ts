@@ -1,6 +1,6 @@
 import { Display, GameObjects, Scene } from 'phaser';
 import { HeroDef } from '../systems/RosterConfig';
-import { BREATH, GAME, GROUND_SHADOW, HERO, blowsFor } from '../core/Constants';
+import { BREATH, GAME, GROUND_SHADOW, HERO, HORDE, blowsFor } from '../core/Constants';
 import { GameState } from '../core/GameState';
 import { createGroundShadow, placeGroundShadow } from '../systems/GroundShadow';
 import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } from '../systems/Fx';
@@ -33,6 +33,8 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
     private attacks: { windup: string; blow: string }[];
     private nextAttackIndex = 0;
     private shadow: GameObjects.Image;
+    /** The stance picture's width: the blow frames are far wider canvases and must not stretch the ground oval. */
+    private stanceWidth: number;
     /** `<sprite>_breath2..N` that actually loaded: the weight-shifting loop after the stance (frame 1). */
     private breathFrames: string[] = [];
 
@@ -63,6 +65,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
         this.add(this.sprite);
         this.setScale(this.baseScale);
 
+        this.stanceWidth = this.sprite.width;
         this.shadow = createGroundShadow(scene, x, y, 10);
         scene.events.on('update', this.syncShadow, this);
         this.once('destroy', () => scene.events.off('update', this.syncShadow, this));
@@ -75,7 +78,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
             const [a, b] = this.lyingSpan(this.lean);
             placeGroundShadow(this.shadow, (a + b) / 2, this.baseY, (b - a) * 0.9);
         } else {
-            placeGroundShadow(this.shadow, this.x, this.baseY, this.sprite.width * this.baseScale * GROUND_SHADOW.HERO_WIDTH);
+            placeGroundShadow(this.shadow, this.x, this.baseY, this.stanceWidth * this.baseScale * GROUND_SHADOW.HERO_WIDTH);
         }
         this.shadow.setDepth(this.baseY - 0.4);
     }
@@ -112,7 +115,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
     /** Horizontal extent it covers right now (standing, or lying if it has fallen) — IdleMood uses it to pick a fall direction that lands on nobody. */
     coveredSpan(): [number, number] {
         if (this.posture === 'down') return this.lyingSpan(this.lean);
-        const half = (this.sprite.width * this.baseScale) / 2;
+        const half = (this.stanceWidth * this.baseScale) / 2;
         return [this.baseX - half, this.baseX + half];
     }
 
@@ -285,7 +288,8 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
         const s = this.baseScale;
         const restDepth = this.depth;
         // Just in front of same-row neighbours the dash passes through, still behind the row in front.
-        this.setDepth(restDepth + 1);
+        // ... and in front of the nearest totem (its depth is its feet y) while the hero runs past it to the goblin.
+        this.setDepth(Math.max(restDepth + 1, Math.max(...HORDE.TOTEMS.map(t => t.y)) + 1));
 
         // The attacks of this series, one per blow, round-robin through the hero's four. The first blow frame's width
         // decides where the hero has to stop so the weapon/fist/fire — not the hero's centre — touches the goblin.
@@ -299,7 +303,8 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
         const poseWidth = this.scene.textures.getFrame(series[0].blow).width;
         // The blow frame's canvas is centred on the body, so half its width is the reach forward: stop that far before the target's
         // front edge plus STRIKE_OVERLAP, and the weapon/fist ends up on the target's body, not in the air in front of it.
-        const strikeX = Math.max(this.baseX, strikeFrontX + HERO.STRIKE_OVERLAP - (poseWidth * s) / 2);
+        // Never into the campfire: with the goblins at the back of the ring (and the chief) the hero would stand in the flames.
+        const strikeX = Math.min(Math.max(this.baseX, strikeFrontX + HERO.STRIKE_OVERLAP - (poseWidth * s) / 2), HORDE.CAMPFIRE.x - 70);
         let ghostTick = 0;
 
         // Contact: the blow frame (fire, glow, slash) and effects at the leading edge, where it lands.

@@ -97,6 +97,8 @@ class Goblin implements Breather {
     readonly scale: number;
     /** The big piece first, then the small ones. */
     private loot: LootPiece[] = [];
+    private flightTimers: { remove(): void }[] = [];
+    private flights: Tweens.Tween[] = [];
 
     constructor(private scene: Scene, readonly def: CreatureDef, readonly index: number) {
         this.scale = HORDE.GOBLIN_HEIGHT / def.topPx;
@@ -171,7 +173,13 @@ class Goblin implements Breather {
 
     private reset() {
         this.scene.tweens.killTweensOf(this.sprite);
+        this.scene.tweens.killTweensOf(this.shadow);
         this.loot.forEach(p => this.scene.tweens.killTweensOf(p.image));
+        // Loot that was still on its way to Cruella's pile must not keep flying (nor play its clink) after a reset.
+        this.flightTimers.forEach(t => t.remove());
+        this.flightTimers = [];
+        this.flights.forEach(f => f.stop());
+        this.flights = [];
         this.sprite.setTexture(animKey(this.def, 'idle'), 0).clearTint()
             .setPosition(this.home.x, this.home.y).setAngle(0).setScale(this.scale);
     }
@@ -214,6 +222,10 @@ class Goblin implements Breather {
     hurt() {
         if (!this.alive) return;
         this.scene.tweens.killTweensOf(this.sprite);
+        // ... which also killed the fade-in of a goblin that has just come back (new week): finish it, or it stays half transparent.
+        this.sprite.setAlpha(1);
+        this.shadow.setAlpha(GROUND_SHADOW.ALPHA);
+        this.loot.forEach(p => p.image.setAlpha(1));
         this.sprite.setTint(0xffffff).setTintMode(TintModes.FILL);
         this.scene.time.delayedCall(80, () => this.sprite.clearTint());
         const played = playFrames(this.sprite, this.def, 'hurt', 420, () => {
@@ -241,7 +253,7 @@ class Goblin implements Breather {
             // No death sheet: it topples backward (away from the heroes) about its feet and fades.
             this.scene.tweens.add({ targets: this.sprite, angle: 84, duration: 520, ease: 'Quad.easeIn', onComplete: fadeOut });
         }
-        this.loot.forEach((piece, i) => this.scene.time.delayedCall(250 + i * HORDE.TREASURE.FLIGHT_STAGGER_MS, () => this.fly(piece, i)));
+        this.flightTimers = this.loot.map((piece, i) => this.scene.time.delayedCall(250 + i * HORDE.TREASURE.FLIGHT_STAGGER_MS, () => this.fly(piece, i)));
     }
 
     /** One piece arcs over the field, spinning, and lands in the pile with a bounce, sparkles and a clink. */
@@ -252,7 +264,7 @@ class Goblin implements Breather {
         const s = HORDE.TREASURE.SCALE;
         const lift = 190 - i * 25;
         image.setDepth(2000 + i);
-        this.scene.tweens.addCounter({
+        this.flights.push(this.scene.tweens.addCounter({
             from: 0,
             to: 1,
             duration: HORDE.LOOT_FLIGHT_MS,
@@ -269,7 +281,7 @@ class Goblin implements Breather {
                 AudioSystem.playHitThud();
                 this.scene.tweens.add({ targets: image, scaleY: s * 0.8, scaleX: s * 1.15, duration: 90, yoyo: true });
             },
-        });
+        }));
     }
 }
 
@@ -333,6 +345,12 @@ class Chief implements Breather {
      * sobbing; drawn for this game, see tools/build-horde.py) take turns with tears squirting out, then he stays
      * wailing, still (the tears are in the drawing). Without the sitting frames the standing pose just sinks down.
      */
+    /** The final picture at once: sitting, wailing (the frame he ends the crying on). */
+    sitInstant() {
+        this.reset();
+        if (this.def.anims.sit) this.sprite.setTexture(animKey(this.def, 'sit'), 0).setY(HORDE.CHIEF.y);
+    }
+
     sitAndCry() {
         this.reset();
         const c = HORDE.CHIEF;
@@ -487,12 +505,14 @@ export class Horde {
     }
 
     /** All five beaten, the week's plan closed: the chief sits down and cries until the next week. */
-    defeat() {
+    /** The week is won: the goblins are gone and the chief sits and cries (`instant`: he is already sitting, no show — a page opened on a won week). */
+    defeat(instant = false) {
         this.cancelGrowl();
         this.defeated = true;
         this.heads = 0;
         this.goblins.forEach(g => { if (g.alive) g.goneInstant(); });
-        this.chief.sitAndCry();
+        if (instant) this.chief.sitInstant();
+        else this.chief.sitAndCry();
     }
 
     canGrowl() {

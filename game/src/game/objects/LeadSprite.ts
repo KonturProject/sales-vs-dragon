@@ -67,13 +67,14 @@ export class LeadSprite extends GameObjects.Container implements Swayable, Breat
     /** Small motivating flourish on every sale (scale only — the idle bob owns `y`). */
     playCheer() {
         const s = this.baseScale;
-        this.scene.tweens.add({ targets: this, scaleX: s * 1.06, scaleY: s * 1.06, duration: 220, yoyo: true, ease: 'Quad.easeOut' });
+        // (during the victory pulse the scale is already animated: two tweens on it would make her jump)
+        if (!this.victoryTween) this.scene.tweens.add({ targets: this, scaleX: s * 1.06, scaleY: s * 1.06, duration: 220, yoyo: true, ease: 'Quad.easeOut' });
         const o = this.sparkleOrigin();
         emitSparkles(this.scene, o.x, o.y, o.spread, 6);
     }
 
     /** Held victory pulse until resetPose() (ratio dropped back under 100%). */
-    playVictory() {
+    playVictory(sparkles = true) {
         this.victoryTween?.stop();
         this.sprite.setTexture(this.stance); // a breath may have been interrupted on one of its frames
         const s = this.baseScale;
@@ -87,6 +88,7 @@ export class LeadSprite extends GameObjects.Container implements Swayable, Breat
             repeat: -1,
             ease: 'Sine.easeInOut',
         });
+        if (!sparkles) return;
         const o = this.sparkleOrigin();
         emitSparkles(this.scene, o.x, o.y, o.spread * 1.4, 20);
     }

@@ -99,7 +99,9 @@ def build_foreground():
     world_w = LOGICAL[0] / WORLD_ZOOM
     cw = round(world_w * PX_PER_UNIT)
     left = round((cw - layer.width) / 2)
-    arr = np.asarray(layer)
+    arr = np.array(layer)
+    fade = 40   # the crop cuts through the fronds, so its top rows are solid: fade them in instead of a straight edge
+    arr[:fade, :, 3] = (arr[:fade, :, 3] * np.linspace(0, 1, fade)[:, None]).astype(np.uint8)
     ground = np.repeat(arr[-1:], FG_EXTRA_GROUND, axis=0)   # the last row is solid dark ground: continue it downwards
     arr = np.concatenate([arr, ground], axis=0)
     arr = np.pad(arr, ((0, 0), (left, cw - layer.width - left), (0, 0)), mode='reflect')

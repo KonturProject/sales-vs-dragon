@@ -1,6 +1,6 @@
 import { GameObjects, Scene } from 'phaser';
 import { GAME, HUD, HeroSlug } from '../core/Constants';
-import { RosterConfig } from '../systems/RosterConfig';
+import { RosterConfig, HeroDef } from '../systems/RosterConfig';
 
 const ROW_HEIGHT = 20;
 const PANEL = HUD.PANEL;
@@ -28,7 +28,7 @@ export class Leaderboard extends GameObjects.Container {
         groundHeroes.forEach((def, i) => {
             const rowY = PANEL.ROWS_Y + i * ROW_HEIGHT;
 
-            const swatch = this.headIcon(scene, def.sprite, 14, ROW_HEIGHT / 2);
+            const swatch = this.headIcon(scene, def, 16, ROW_HEIGHT / 2);
             const label = scene.add.text(34, ROW_HEIGHT / 2, RosterConfig.ropNameForSlug(def.slug) ?? def.slug, {
                 fontFamily: HUD.FONT,
                 fontSize: '13px',
@@ -36,7 +36,7 @@ export class Leaderboard extends GameObjects.Container {
                 color: HUD.COLORS.label,
             }).setOrigin(0, 0.5);
             const amountText = scene.add.text(PANEL.ROWS_WIDTH, ROW_HEIGHT / 2, '0 ₽', {
-                fontFamily: HUD.FONT,
+                fontFamily: HUD.FONT_NUM,
                 fontStyle: 'bold',
                 fontSize: '13px',
                 resolution: GAME.RENDER_SCALE,
@@ -56,12 +56,14 @@ export class Leaderboard extends GameObjects.Container {
      * crop's centre. (Not a new frame on the hero's texture: a named frame there would become the texture's default frame and
      * every hero on the stage would turn into a head.)
      */
-    private headIcon(scene: Scene, textureKey: string, x: number, y: number): GameObjects.Image {
-        const icon = scene.add.image(x, y, textureKey);
-        const crop = { x: icon.width * 0.2, y: 0, w: icon.width * 0.6, h: icon.height * 0.3 };
+    private headIcon(scene: Scene, def: HeroDef, x: number, y: number): GameObjects.Image {
+        const icon = scene.add.image(x, y, def.sprite);
+        // The head box measured per hero (tools/measure-head-icons.py): hats, hair and manes differ; a fixed crop cut faces in half.
+        const [bx, by, bw, bh] = def.icon ?? [icon.width * 0.2, 0, icon.width * 0.6, icon.height * 0.3];
+        const crop = { x: bx, y: by, w: bw, h: bh };
         icon.setCrop(crop.x, crop.y, crop.w, crop.h);
         icon.setOrigin((crop.x + crop.w / 2) / icon.width, (crop.y + crop.h / 2) / icon.height);
-        icon.setScale(HEAD_ICON_HEIGHT / crop.h);
+        icon.setScale(Math.min(HEAD_ICON_HEIGHT / crop.h, 26 / crop.w)); // never wider than 26 px: it must stay inside the frame
         return icon;
     }
 
@@ -85,6 +87,7 @@ export class Leaderboard extends GameObjects.Container {
             // Unchanged rank/amount (most polls) => no tween and no text redraw, so an idle display stays idle.
             const targetY = PANEL.ROWS_Y + rank * ROW_HEIGHT;
             if (entry.row.y !== targetY) {
+                this.scene.tweens.killTweensOf(entry.row); // a re-rank before the last one ended must not fight it
                 this.scene.tweens.add({
                     targets: entry.row,
                     y: targetY,

@@ -40,6 +40,8 @@ export interface DragonHeadLostPayload {
 
 export interface DragonDefeatedPayload {
     delayMs: number;
+    /** The first poll after page load found the week already won: show the final state, no fanfare, no replay of the finale. */
+    baseline?: boolean;
 }
 
 /**

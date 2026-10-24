@@ -4,7 +4,7 @@ import {
 } from '../core/EventBus';
 import { GameState } from '../core/GameState';
 import { fitCameraToWorld, hudToWorld } from '../core/Render';
-import { DRAGON, HERO, HUD, WORLD } from '../core/Constants';
+import { DRAGON, HERO, HORDE, HUD, WORLD } from '../core/Constants';
 import { RosterConfig, HeroDef } from '../systems/RosterConfig';
 import { DataPollingService } from '../systems/DataPollingService';
 import { Horde } from '../objects/Horde';
@@ -67,7 +67,11 @@ export class PenScene extends Scene {
         }
 
         new BreathRelay(this, [...this.heroes.values(), ...(this.lead ? [this.lead] : []), ...this.horde.breathers()]).start();
-        this.mood = new IdleMood(this, [...this.heroes.values()], this.horde, this.lead ? [this.lead.span()] : []);
+        this.mood = new IdleMood(this, [...this.heroes.values()], this.horde, [
+            ...(this.lead ? [this.lead.span()] : []),
+            // a fallen hero must not lie across a totem
+            ...HORDE.TOTEMS.map(t => [t.x - 56 * t.scale, t.x + 56 * t.scale] as [number, number]),
+        ]);
 
         EventBus.on(GameEvents.MONEY_IN, this.onMoneyIn, this);
         EventBus.on(GameEvents.PROGRESS_CHANGED, this.onProgressChanged, this);
@@ -181,6 +185,13 @@ export class PenScene extends Scene {
     }
 
     private onDragonDefeated(payload: DragonDefeatedPayload) {
+        if (payload.baseline) {
+            // The tab was opened on a won week: straight into the final picture — the chief already sitting, no fanfare, no celebration.
+            this.hasPlayedVictory = true;
+            this.horde.defeat(true);
+            this.lead?.playVictory(false);
+            return;
+        }
         this.time.delayedCall(payload.delayMs + DRAGON.HEAD_LOSS_DURATION_MS, () => {
             if (!GameState.dragonDefeated) return;
             AudioSystem.playFanfare();

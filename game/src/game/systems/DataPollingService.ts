@@ -149,7 +149,7 @@ function diffAndEmit(previous: Record<string, number> | null, status: StatusResp
     if (GameState.ratio >= 1 && !GameState.dragonDefeated) {
         GameState.dragonDefeated = true;
         const delayMs = isBaseline ? 0 : settleDelayMs + lostCount * DRAGON.HEAD_LOSS_STAGGER_MS;
-        EventBus.emit(GameEvents.DRAGON_DEFEATED, { delayMs });
+        EventBus.emit(GameEvents.DRAGON_DEFEATED, { delayMs, baseline: isBaseline });
     } else if (GameState.ratio < 1 && GameState.dragonDefeated) {
         // New week (or a raised plan) dropped us back under 100% — un-latch so
         // crossing the goal again later re-fires the victory.

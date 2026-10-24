@@ -24,6 +24,7 @@ DARKEN = (0.55, 0.58, 0.68)  # per-channel brightness: the props must sit in the
 def main():
     for src, out, screen_h in PROPS:
         im = Image.open(os.path.join(SRC, src)).convert('RGBA')
+        im = im.crop(im.getbbox())  # the pictures carry transparent padding: the feet line must be the picture's bottom edge
         h = screen_h * TEXTURE_SCALE
         w = round(im.width * h / im.height)
         im = im.resize((w, h), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=1.2, percent=60, threshold=2))

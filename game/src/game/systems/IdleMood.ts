@@ -93,7 +93,9 @@ export class IdleMood {
 
         const dir = this.freerDirection(hero);
         const roomOnFloor = this.heroes.filter(h => h.isLying).length < IDLE.MAX_LYING;
-        const fall = mode === 'fall' || (mode !== 'doze' && roomOnFloor && Math.random() < IDLE.FALL_SHARE);
+        // Lying down on a totem or on Cruella's pile looks careless: that hero dozes on its feet instead (even for an admin's 'fall').
+        const blocked = this.obstacles.some(o => overlap(hero.lyingSpan(dir), o) > 4);
+        const fall = !blocked && (mode === 'fall' || (mode !== 'doze' && roomOnFloor && Math.random() < IDLE.FALL_SHARE));
         const done = fall ? hero.fallOver(dir) : hero.doze(dir);
         if (done) this.scene.time.delayedCall(1300, () => this.horde.growl());
         return done;

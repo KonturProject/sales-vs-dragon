@@ -6,7 +6,7 @@ export function emitBurst(scene: Scene, x: number, y: number, color: number, cou
     for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
         const speed = 50 + Math.random() * 70;
-        const particle = scene.add.circle(x, y, 2 + Math.random() * 3, color, 1);
+        const particle = scene.add.circle(x, y, 2 + Math.random() * 3, color, 1).setDepth(1500); // over the characters (depth = feet y)
         scene.tweens.add({
             targets: particle,
             x: x + Math.cos(angle) * speed,
@@ -25,7 +25,7 @@ export function emitSparkles(scene: Scene, x: number, y: number, spread: number,
     for (let i = 0; i < count; i++) {
         const sx = x + (Math.random() - 0.5) * spread;
         const sy = y + (Math.random() - 0.5) * spread * 0.6;
-        const star = scene.add.star(sx, sy, 4, 2, 5, 0xffe89a, 1).setScale(0);
+        const star = scene.add.star(sx, sy, 4, 2, 5, 0xffe89a, 1).setScale(0).setDepth(1500);
         scene.tweens.add({
             targets: star,
             scale: { from: 0, to: 0.8 + Math.random() * 0.6 },
@@ -78,7 +78,7 @@ export function flashScreen(scene: Scene, color: number, alpha: number, duration
 
 /** Expanding ring outline at an impact point — reads as a "shockwave" alongside the particle burst. */
 export function emitShockwaveRing(scene: Scene, x: number, y: number, color: number): GameObjects.Arc {
-    const ring = scene.add.circle(x, y, 6, 0x000000, 0).setStrokeStyle(3, color, 0.9);
+    const ring = scene.add.circle(x, y, 6, 0x000000, 0).setStrokeStyle(3, color, 0.9).setDepth(1500);
     scene.tweens.add({
         targets: ring,
         radius: 40,

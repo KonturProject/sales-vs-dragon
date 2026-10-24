@@ -66,13 +66,13 @@ export class HUDScene extends Scene {
         this.renderHeads(GameState.headsRemaining);
 
         this.label = this.add.text(TRACK_X + TRACK_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, '', {
-            fontFamily: GOTHIC,
+            fontFamily: HUD.FONT_NUM,
             fontStyle: 'bold',
             fontSize: '14px',
             resolution: GAME.RENDER_SCALE,
             color: HUD.COLORS.text,
         }).setOrigin(0.5).setStroke(HUD.COLORS.stroke, 3).setDepth(4);
-        this.labelPlate = this.add.graphics().setDepth(3.8);
+        this.labelPlate = this.add.graphics().setDepth(3.4); // under the fill (3.5): the tip of the fill stays visible over the plate
 
         this.statusText = this.add.text(STATUS_X - 12, STATUS_Y, '', {
             fontFamily: GOTHIC,
@@ -123,8 +123,10 @@ export class HUDScene extends Scene {
         const onDragonDefeated = (payload: DragonDefeatedPayload) => {
             this.time.delayedCall(payload.delayMs + DRAGON.HEAD_LOSS_DURATION_MS, () => {
                 if (!GameState.dragonDefeated) return; // ratio dropped back while we were waiting
-                emitConfettiBurst(this, 120);
-                flashScreen(this, 0xffe89a, 0.35, 220, 3);
+                if (!payload.baseline) {
+                    emitConfettiBurst(this, 120);
+                    flashScreen(this, 0xffe89a, 0.35, 220, 3);
+                }
                 this.showVictoryBanner();
             });
         };
@@ -145,9 +147,9 @@ export class HUDScene extends Scene {
                 if (payload.heads < GameState.headsRemaining) return; // stale: the ratio dropped back meanwhile
                 this.renderHeads(payload.heads);
                 emitConfettiBurst(this, 30);
-                const pulse = this.add.rectangle(
-                    TRACK_X + TRACK_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, TRACK_WIDTH, BAR_HEIGHT, 0xffffff, 0
-                ).setDepth(3.6);
+                // The flash follows the track's rounded ends (a plain rectangle showed white corners outside the frame).
+                const pulse = this.add.graphics().setDepth(3.6).setAlpha(0);
+                pulse.fillStyle(0xffffff, 1).fillRoundedRect(TRACK_X, BAR_Y, TRACK_WIDTH, BAR_HEIGHT, BAR_RADIUS);
                 this.tweens.add({
                     targets: pulse,
                     alpha: 0.5,
