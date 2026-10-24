@@ -3,8 +3,8 @@ import {
     EventBus, GameEvents, MoneyInPayload, ProgressChangedPayload, DragonHeadLostPayload, DragonDefeatedPayload, AdminCommandPayload,
 } from '../core/EventBus';
 import { GameState } from '../core/GameState';
-import { fitCameraToGame } from '../core/Render';
-import { DRAGON, GAME, HERO, HUD } from '../core/Constants';
+import { fitCameraToWorld, hudToWorld } from '../core/Render';
+import { DRAGON, HERO, HUD, WORLD } from '../core/Constants';
 import { RosterConfig, HeroDef } from '../systems/RosterConfig';
 import { DataPollingService } from '../systems/DataPollingService';
 import { Horde } from '../objects/Horde';
@@ -35,11 +35,11 @@ export class PenScene extends Scene {
     }
 
     create() {
-        fitCameraToGame(this);
+        fitCameraToWorld(this);
         this.cameras.main.setBackgroundColor('#08090f');
 
-        // Forest with the face-tree behind the heroes (tools/build-background.py), 1.5x the logical size.
-        this.add.image(GAME.WIDTH / 2, GAME.HEIGHT / 2, 'bg_forest').setDisplaySize(GAME.WIDTH, GAME.HEIGHT).setDepth(-10);
+        // Forest with the face-tree behind the heroes (tools/build-background.py), covering the whole zoomed-out view.
+        this.add.image(WORLD.X0 + WORLD.W / 2, WORLD.Y0 + WORLD.H / 2, 'bg_forest').setDisplaySize(WORLD.W, WORLD.H).setDepth(-10);
 
         this.horde = new Horde(this);
 
@@ -96,10 +96,8 @@ export class PenScene extends Scene {
         if (hero) {
             hero.playHit(payload.delta, this.horde.strikeFrontX());
             this.time.delayedCall(HERO.IMPACT_MS, () => this.horde.reactToHit());
-            emitFloatingAmount(
-                this, hero.x, hero.y - 150, payload.delta,
-                HUD.BAR_X + HUD.BAR_WIDTH / 2, HUD.BAR_Y + HUD.BAR_HEIGHT / 2
-            );
+            const bar = hudToWorld(HUD.BAR_X + HUD.BAR_WIDTH / 2, HUD.BAR_Y + HUD.BAR_HEIGHT / 2);
+            emitFloatingAmount(this, hero.x, hero.y - 150, payload.delta, bar.x, bar.y);
         }
 
         // The branch lead isn't tied to one department — she cheers on every sale.

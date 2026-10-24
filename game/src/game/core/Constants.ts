@@ -14,6 +14,20 @@ export const GAME = {
     RENDER_SCALE: QUALITY.renderScale,
 } as const;
 
+/**
+ * The stage (PenScene) shows more world than the 1280×720 the HUD is laid out in: its camera is zoomed out by ZOOM,
+ * so the same coordinates and textures look ~22 % smaller and the view reaches `-X0` units past the left/right
+ * edges and `-Y0` past the top/bottom (core/Render.ts: fitCameraToWorld). The background covers the whole view.
+ */
+const WORLD_ZOOM = 0.78;
+export const WORLD = {
+    ZOOM: WORLD_ZOOM,
+    W: GAME.WIDTH / WORLD_ZOOM,
+    H: GAME.HEIGHT / WORLD_ZOOM,
+    X0: -(GAME.WIDTH / WORLD_ZOOM - GAME.WIDTH) / 2,
+    Y0: -(GAME.HEIGHT / WORLD_ZOOM - GAME.HEIGHT) / 2,
+} as const;
+
 /** Weekly plan is split into this many equal daily plans; each one crossed costs the horde a goblin. */
 export const DAYS = 5;
 
