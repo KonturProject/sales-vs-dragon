@@ -1,6 +1,6 @@
 import { Scene, Display, Loader, Textures } from 'phaser';
 import { RosterConfig } from '../systems/RosterConfig';
-import { GAME, HORDE } from '../core/Constants';
+import { GAME, HORDE, WORLD } from '../core/Constants';
 import { HORDE_DEFS, animKey } from '../objects/Horde';
 import { fitCameraToGame } from '../core/Render';
 
@@ -111,8 +111,8 @@ export class Preloader extends Scene {
 
         if (key === 'bg_forest') {
             g.fillGradientStyle(0x0d1a12, 0x0d1a12, 0x34452a, 0x34452a, 1);
-            g.fillRect(0, 0, GAME.WIDTH, GAME.HEIGHT);
-            g.generateTexture('bg_forest', GAME.WIDTH, GAME.HEIGHT);
+            g.fillRect(0, 0, WORLD.W, WORLD.H);
+            g.generateTexture('bg_forest', WORLD.W, WORLD.H);
         } else if (key.startsWith('goblin') || key.startsWith('loot_') || key === 'campfire') {
             g.fillStyle(key.startsWith('goblin') ? 0x5d8a2c : 0xc9a227, 1);
             g.fillRoundedRect(0, 0, 120, 160, 18);
