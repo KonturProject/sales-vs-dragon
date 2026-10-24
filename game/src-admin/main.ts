@@ -1,6 +1,6 @@
 import ropMapping from '../src/game/config/ropMapping.json';
 import { BackendError, callBackend, fetchPublicStatus, newRequestId } from './api';
-import { parsePayments, type PaymentRow, type ParsedPayments } from './importPayments';
+import { BONUS_INVOICE, parsePayments, type PaymentRow, type ParsedPayments } from './importPayments';
 
 /** Human names of the heroes, for the buttons (department codes alone are not friendly). */
 const HERO_NAMES: Record<string, string> = {
@@ -324,9 +324,13 @@ function showImportSummary() {
         chip('Средний чек по файлу', money(total / parsed.rows.length)),
         ...[...byRop].sort((a, b) => a[0].localeCompare(b[0], 'ru')).map(([rop, e]) => chip(rop, `${e.count} · ${money(e.sum)}`)),
     );
-    importSkipped.hidden = parsed.skipped.length === 0;
-    importSkipped.textContent = parsed.skipped.length === 0 ? '' :
-        `Не загрузятся (группа не относится ни к одному отделу): ${parsed.skipped.map(s => `«${s.group || 'без группы'}» — ${s.count} шт. на ${money(s.sum)}`).join('; ')}.`;
+    const notes: string[] = [];
+    if (parsed.bonus.count > 0) notes.push(`Не загрузятся бонусные счета Академии по ${BONUS_INVOICE.amount} ₽: ${parsed.bonus.count} шт.`);
+    if (parsed.skipped.length > 0) {
+        notes.push(`Не загрузятся (группа не относится ни к одному отделу): ${parsed.skipped.map(s => `«${s.group || 'без группы'}» — ${s.count} шт. на ${money(s.sum)}`).join('; ')}.`);
+    }
+    importSkipped.hidden = notes.length === 0;
+    importSkipped.textContent = notes.join(' ');
 }
 
 let compareToken = 0;
