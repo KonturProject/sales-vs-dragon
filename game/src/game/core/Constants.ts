@@ -102,7 +102,7 @@ export const HORDE = {
     /** `scale` is perspective: the nearer to the bottom of the picture, the bigger (1 = the texture's own size, 2x -> 0.5). */
     TENTS: [{ x: 1430, y: 468, scale: 0.85 }, { x: 1385, y: 655, scale: 1.2 }],
     /** Two totems on either side of the road: the gate of the camp. */
-    TOTEMS: [{ x: 860, y: 470, scale: 0.85 }, { x: 860, y: 615, scale: 1.15 }],
+    TOTEMS: [{ x: 860, y: 470, scale: 0.85 }, { x: 880, y: 668, scale: 1.2 }],
     /** The hero's leading edge stops this far in front of the target's front edge. */
     STRIKE_GAP: 6,
     /** After the chief sits down he cries for this long, then keeps a still, tearful pose (no endless animation). */
