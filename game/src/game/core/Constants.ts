@@ -99,8 +99,10 @@ export const HORDE = {
      */
     CAMPFIRE: { x: 1092, y: 550, scale: 0.36, FPS: 8, FRAME: 256 },
     /** Two tents and the totem of the camp (feet = bottom of the picture); textures are 2x their on-screen size. */
-    TENTS: [{ x: 1425, y: 470 }, { x: 1385, y: 575 }],
-    TOTEM: { x: 860, y: 495 },
+    /** `scale` is perspective: the nearer to the bottom of the picture, the bigger (1 = the texture's own size, 2x -> 0.5). */
+    TENTS: [{ x: 1430, y: 468, scale: 0.85 }, { x: 1385, y: 655, scale: 1.2 }],
+    /** Two totems on either side of the road: the gate of the camp. */
+    TOTEMS: [{ x: 860, y: 470, scale: 0.85 }, { x: 860, y: 615, scale: 1.15 }],
     /** The hero's leading edge stops this far in front of the target's front edge. */
     STRIKE_GAP: 6,
     /** After the chief sits down he cries for this long, then keeps a still, tearful pose (no endless animation). */
