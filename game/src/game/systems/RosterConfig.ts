@@ -9,6 +9,8 @@ export interface HeroDef {
     lead: boolean;
     /** How many `<sprite>_hit1..N` attack-pose textures exist for this hero. */
     hits: number;
+    /** Frames of the weight-shifting stance loop: `<sprite>` is frame 1, `<sprite>_breath2..N` the rest (tools/build-sprites.py, stance). */
+    breath: number;
 }
 
 const heroes = heroRoster.heroes as HeroDef[];

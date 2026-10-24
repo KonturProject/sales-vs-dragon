@@ -1,9 +1,10 @@
 import { GameObjects, Scene, TintModes, Tweens } from 'phaser';
 import hordeConfig from '../config/horde.json';
-import { DAYS, DRAGON, HORDE } from '../core/Constants';
+import { BREATH, DAYS, DRAGON, HORDE } from '../core/Constants';
 import { emitBurst, emitCoinBurst, emitShockwaveRing, emitSparkles } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 import { Firelight } from './Firelight';
+import { Breather } from '../systems/BreathRelay';
 
 /** One creature's frames as tools/build-horde.py wrote them (config/horde.json). Lengths in texture px from the feet. */
 export interface CreatureDef {
@@ -60,6 +61,25 @@ function playFrames(sprite: GameObjects.Sprite, def: CreatureDef, anim: string, 
     });
 }
 
+
+/** Height factors of one breath of a creature that has no stance loop: a slight rise and settle about its feet, in timer steps (no tween). */
+const BREATH_STEPS = [1.014, 1.0, 0.988, 1.0];
+
+/** True while the creature stands idle with nothing else moving it. */
+function isResting(sprite: GameObjects.Sprite, def: CreatureDef) {
+    return sprite.visible && sprite.texture.key === animKey(def, 'idle') && !sprite.scene.tweens.isTweening(sprite);
+}
+
+function breatheScale(sprite: GameObjects.Sprite, def: CreatureDef, scale: number, onDone: () => void) {
+    const step = (i: number) => {
+        if (!isResting(sprite, def)) return onDone();
+        sprite.setScale(scale, scale * BREATH_STEPS[i]);
+        if (i === BREATH_STEPS.length - 1) return onDone();
+        sprite.scene.time.delayedCall(BREATH.FRAME_MS, () => step(i + 1));
+    };
+    step(0);
+}
+
 /** A piece of a goblin's treasure: `at` = its place by the goblin, `pile` = in Cruella's pile (HORDE.TREASURE). */
 interface LootPiece {
     image: GameObjects.Image;
@@ -67,7 +87,7 @@ interface LootPiece {
     pile: { dx: number; dy: number };
 }
 
-class Goblin {
+class Goblin implements Breather {
     readonly sprite: GameObjects.Sprite;
     alive = true;
     private readonly home: { x: number; y: number };
@@ -101,6 +121,14 @@ class Goblin {
     }
 
     get x() { return this.home.x; }
+
+    canBreathe() {
+        return this.alive && isResting(this.sprite, this.def);
+    }
+
+    breathe(onDone: () => void) {
+        breatheScale(this.sprite, this.def, this.scale, onDone);
+    }
 
     /** Where a hero's leading edge stops when it hits this goblin. */
     frontX() {
@@ -229,7 +257,7 @@ class Goblin {
     }
 }
 
-class Chief {
+class Chief implements Breather {
     readonly sprite: GameObjects.Sprite;
     private cryTimer: { remove(): void } | null = null;
     /** Drawn at HORDE.CHIEF.height — a fifth taller than a hero. */
@@ -239,6 +267,14 @@ class Chief {
         const c = HORDE.CHIEF;
         this.scale = c.height / def.topPx;
         this.sprite = scene.add.sprite(c.x, c.y, animKey(def, 'idle'), 0).setOrigin(def.originX, def.originY).setScale(this.scale).setDepth(c.y);
+    }
+
+    canBreathe() {
+        return isResting(this.sprite, this.def);
+    }
+
+    breathe(onDone: () => void) {
+        breatheScale(this.sprite, this.def, this.scale, onDone);
     }
 
     frontX() {
@@ -368,6 +404,11 @@ export class Horde {
         new Firelight(scene, flames);
         this.chief = new Chief(scene, HORDE_DEFS.chief);
         this.goblins = HORDE_DEFS.goblins.slice(0, DAYS).map((def, i) => new Goblin(scene, def, i));
+    }
+
+    /** Everyone here who can shift their weight in the breath relay (BreathRelay); the ones that cannot right now say so themselves. */
+    breathers(): Breather[] {
+        return [...this.goblins, this.chief];
     }
 
     get headCount() {

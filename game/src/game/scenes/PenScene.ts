@@ -12,7 +12,8 @@ import { CampProps } from '../objects/CampProps';
 import { HeroSprite } from '../objects/HeroSprite';
 import { LeadSprite } from '../objects/LeadSprite';
 import { IdleMood } from '../systems/IdleMood';
-import { emitFloatingAmount, startIdleSway } from '../systems/Fx';
+import { emitFloatingAmount } from '../systems/Fx';
+import { BreathRelay } from '../systems/BreathRelay';
 import { AudioSystem } from '../systems/Audio';
 
 /**
@@ -56,11 +57,11 @@ export class PenScene extends Scene {
 
         const leadDef = RosterConfig.heroes.find((h: HeroDef) => h.lead);
         if (leadDef) {
-            this.lead = new LeadSprite(this, HERO.LEAD.x, HERO.LEAD.y, leadDef.sprite, HERO.LEAD.scale);
+            this.lead = new LeadSprite(this, HERO.LEAD.x, HERO.LEAD.y, leadDef.sprite, HERO.LEAD.scale, leadDef.breath);
             this.lead.setDepth(HERO.LEAD.y);
         }
 
-        startIdleSway(this, [...this.heroes.values(), ...(this.lead ? [this.lead] : [])]);
+        new BreathRelay(this, [...this.heroes.values(), ...(this.lead ? [this.lead] : []), ...this.horde.breathers()]).start();
         this.mood = new IdleMood(this, [...this.heroes.values()], this.horde, this.lead ? [this.lead.span()] : []);
 
         EventBus.on(GameEvents.MONEY_IN, this.onMoneyIn, this);

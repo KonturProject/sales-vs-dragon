@@ -141,6 +141,50 @@ def build_hero_sheet(out, prefix, slug, disp_h, stance, attacks):
     print(slug, 'stance', frames[stance].size, 'scale', round(s, 3), 'attacks', len(attacks))
 
 
+STANCE_SHEETS = os.path.join(ROOT, 'assets-source', 'stance-sheets')
+BREATH_FRAMES = 4
+
+
+def row_frames(sheet, n):
+    """The n frames of a single-row sheet, left to right: pieces joined by connected parts, each belonging to the column
+    its centre of mass lies in (like sheet_frames, for a 1 x n strip). Specks under 30 px are dropped."""
+    from scipy import ndimage
+    a = np.array(sheet.getchannel('A')) > 24
+    labels, count = ndimage.label(a, structure=np.ones((3, 3)))
+    W = a.shape[1]
+    cols = {}
+    for i, (sy, sx) in enumerate(ndimage.find_objects(labels), start=1):
+        piece = labels[sy, sx] == i
+        if int(piece.sum()) < 30:
+            continue
+        ys, xs = np.nonzero(piece)
+        cols.setdefault(min(n - 1, int((sx.start + xs.mean()) // (W / n))), []).append((sy, sx, i))
+    rgba = np.array(sheet)
+    frames = []
+    for c in range(n):
+        pieces = cols.get(c)
+        if not pieces:
+            raise SystemExit(f'stance sheet: no figure in column {c + 1} of {n}')
+        y0 = min(p[0].start for p in pieces); y1 = max(p[0].stop for p in pieces)
+        x0 = min(p[1].start for p in pieces); x1 = max(p[1].stop for p in pieces)
+        mask = np.isin(labels[y0:y1, x0:x1], [p[2] for p in pieces])
+        crop_ = rgba[y0:y1, x0:x1].copy()
+        crop_[~mask] = 0
+        frames.append(Image.fromarray(crop_, 'RGBA'))
+    return frames
+
+
+def build_stance(out, slug, disp_h):
+    """The user's 'breathing' strip for a hero (or Cruella): 4 frames of the standing pose shifting its weight. Frame 1 replaces the plain
+    stance `<slug>.png` (the loop starts and ends on it); frames 2..4 become `<slug>_breath2..4`. One scale for all four frames (from frame 1), so the figure does not change size between them."""
+    frames = row_frames(Image.open(os.path.join(STANCE_SHEETS, slug + '.png')).convert('RGBA'), BREATH_FRAMES)
+    s = disp_h * TEX / frames[0].height
+    for i, f in enumerate(frames[1:], start=2):
+        save_png(anchored(f, s), os.path.join(out, f'{slug}_breath{i}.png'))
+    save_png(anchored(frames[0], s), os.path.join(out, slug + '.png'))
+    print(slug, 'breath', [f.size for f in frames], 'scale', round(s, 3))
+
+
 def build_lead(out):
     d = folder('Круэлла')
     im = crop(Image.open(os.path.join(SRC, d, os.listdir(os.path.join(SRC, d))[0])).convert('RGBA'))
@@ -261,18 +305,21 @@ def find_top(pred):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=os.path.join(ROOT, 'public', 'assets', 'sprites'))
-    ap.add_argument('--only', choices=['heroes', 'lead', 'dragon', 'mountain', 'bg'], nargs='+',
-                    help='build only these parts (default: heroes lead; the dragon alignment takes minutes)')
+    ap.add_argument('--only', choices=['heroes', 'lead', 'stance', 'dragon', 'mountain', 'bg'], nargs='+',
+                    help='build only these parts (default: heroes lead stance; the dragon alignment takes minutes)')
     ap.add_argument('--mount-clip', type=float, default=MOUNT_CLIP_RIGHT,
                     help='share of the gold mountain cut off its right side (0 = original art)')
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    only = set(args.only or ['heroes', 'lead'])
+    only = set(args.only or ['heroes', 'lead', 'stance'])
     if 'heroes' in only:
         for prefix, (slug, h, stance, attacks) in HERO_SHEETS.items():
             build_hero_sheet(args.out, prefix, slug, h, stance, attacks)
     if 'lead' in only:
         build_lead(args.out)
+    if 'stance' in only:
+        for slug, h in [(v[0], v[1]) for v in HERO_SHEETS.values()] + [(LEAD[0], LEAD[1])]:
+            build_stance(args.out, slug, h)
     if 'dragon' in only:
         build_dragon(args.out)
     if 'mountain' in only:

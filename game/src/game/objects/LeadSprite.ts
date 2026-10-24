@@ -1,19 +1,26 @@
 import { GameObjects, Scene, Tweens } from 'phaser';
-import { HERO } from '../core/Constants';
+import { BREATH, HERO } from '../core/Constants';
 import { emitSparkles, Swayable } from '../systems/Fx';
+import { Breather } from '../systems/BreathRelay';
 
 /**
  * The branch lead (Cruella). Not tied to any department: she stands apart from
  * the fighters, never throws a punch, cheers on every sale and celebrates the
  * victory. Has a single pose, so all reactions are code-driven (scale/sparkles).
  */
-export class LeadSprite extends GameObjects.Container implements Swayable {
+export class LeadSprite extends GameObjects.Container implements Swayable, Breather {
     private sprite: GameObjects.Image;
     private victoryTween?: Tweens.Tween;
     private baseScale: number;
+    private stance: string;
+    private breathFrames: string[] = [];
 
-    constructor(scene: Scene, x: number, y: number, textureKey: string, scaleMul = 1) {
+    constructor(scene: Scene, x: number, y: number, textureKey: string, scaleMul = 1, breathFrames = 1) {
         super(scene, x, y);
+        this.stance = textureKey;
+        for (let i = 2; i <= breathFrames; i++) {
+            if (scene.textures.exists(`${textureKey}_breath${i}`)) this.breathFrames.push(`${textureKey}_breath${i}`);
+        }
         this.baseScale = HERO.TEXTURE_SCALE * scaleMul;
         this.sprite = scene.add.image(0, 0, textureKey).setOrigin(0.5, 1);
         this.add(this.sprite);
@@ -23,6 +30,22 @@ export class LeadSprite extends GameObjects.Container implements Swayable {
 
     canSway() {
         return !this.victoryTween;
+    }
+
+    canBreathe() {
+        return this.breathFrames.length > 0 && this.canSway();
+    }
+
+    /** One breath: the weight-shift frames in turn, then the stance (see HeroSprite.breathe). */
+    breathe(onDone: () => void) {
+        const frames = [...this.breathFrames, this.stance];
+        const step = (i: number) => {
+            if (!this.canSway()) return onDone();
+            this.sprite.setTexture(frames[i]);
+            if (i === frames.length - 1) return onDone();
+            this.scene.time.delayedCall(BREATH.FRAME_MS, () => step(i + 1));
+        };
+        step(0);
     }
 
     /** Horizontal extent on screen. */

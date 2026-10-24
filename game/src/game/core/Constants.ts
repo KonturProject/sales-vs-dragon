@@ -192,6 +192,17 @@ export const HUD = {
     BAR_HEIGHT: 30,
 } as const;
 
+/**
+ * "Breathing": every character in turn shifts its weight from foot to foot (systems/BreathRelay.ts). Driven by timers and
+ * texture swaps, never tweens — a tween would pull PowerSaver up to the active frame rate. LANES characters breathe at once.
+ */
+export const BREATH = {
+    FRAME_MS: 260,
+    /** Pause before the next character takes over, random in [min, max]. */
+    GAP_MS: [500, 1400],
+    LANES: 2,
+} as const;
+
 export const FX = {
     /** Comic onomatopoeia text only pops up for sales at/above this size — keeps
      * frequent small sales from making the screen "chatter" with text every hit. */

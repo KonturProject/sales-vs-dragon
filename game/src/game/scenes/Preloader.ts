@@ -41,6 +41,8 @@ export class Preloader extends Scene {
         for (const t of HORDE_DEFS.treasures) this.load.image(t.key, `horde/${t.key}.png`);
         for (const hero of RosterConfig.heroes) {
             this.load.image(hero.sprite, `${hero.sprite}.png`);
+            // Stance loop (breathing): the stance itself is frame 1, the rest are loaded here.
+            for (let i = 2; i <= hero.breath; i++) this.load.image(`${hero.sprite}_breath${i}`, `${hero.sprite}_breath${i}.png`);
             // Each attack is two frames: the wind-up shown during the dash, the blow (with its effect) on arrival.
             for (let i = 1; i <= hero.hits; i++) {
                 this.load.image(`${hero.sprite}_hit${i}_windup`, `${hero.sprite}_hit${i}_windup.png`);
@@ -108,7 +110,7 @@ export class Preloader extends Scene {
 
         // Attack poses are optional variety (HeroSprite checks texture existence
         // before using them), so a missing one gets no placeholder.
-        if (/_hit\d+(_windup)?$/.test(key)) return;
+        if (/_(hit\d+(_windup)?|breath\d+)$/.test(key)) return;
 
         const g = this.make.graphics({ x: 0, y: 0 });
 

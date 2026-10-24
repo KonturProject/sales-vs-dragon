@@ -1,8 +1,9 @@
 import { Display, GameObjects, Scene } from 'phaser';
 import { HeroDef } from '../systems/RosterConfig';
-import { FX, GAME, HERO } from '../core/Constants';
+import { BREATH, FX, GAME, HERO } from '../core/Constants';
 import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
+import { Breather } from '../systems/BreathRelay';
 
 /**
  * A department mascot. The sprite is anchored at its feet (bottom-center) and
@@ -12,7 +13,7 @@ import { AudioSystem } from '../systems/Audio';
  *
  * Standing, the hero never moves vertically (no bob) — it stands on the floor.
  */
-export class HeroSprite extends GameObjects.Container implements Swayable {
+export class HeroSprite extends GameObjects.Container implements Swayable, Breather {
     readonly slug: string;
     private sprite: GameObjects.Image;
     private baseX: number;
@@ -29,6 +30,8 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
     /** Attacks, used one after another on successive sales: the wind-up frame shown during the dash, the blow on arrival. */
     private attacks: { windup: string; blow: string }[];
     private nextAttackIndex = 0;
+    /** `<sprite>_breath2..N` that actually loaded: the weight-shifting loop after the stance (frame 1). */
+    private breathFrames: string[] = [];
 
     constructor(scene: Scene, x: number, y: number, def: HeroDef, scaleMul = 1) {
         super(scene, x, y);
@@ -49,6 +52,10 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
             this.attacks.push({ windup: scene.textures.exists(windup) ? windup : blow, blow });
         }
 
+        for (let i = 2; i <= def.breath; i++) {
+            if (scene.textures.exists(`${def.sprite}_breath${i}`)) this.breathFrames.push(`${def.sprite}_breath${i}`);
+        }
+
         this.sprite = scene.add.image(0, 0, def.sprite).setOrigin(0.5, 1);
         this.add(this.sprite);
         this.setScale(this.baseScale);
@@ -58,6 +65,22 @@ export class HeroSprite extends GameObjects.Container implements Swayable {
 
     canSway() {
         return !this.busy && this.posture === 'standing';
+    }
+
+    canBreathe() {
+        return this.breathFrames.length > 0 && this.canSway();
+    }
+
+    /** One breath: the weight-shift frames in turn, then the stance. Stops quietly if anything else takes the hero over (a blow, a fall). */
+    breathe(onDone: () => void) {
+        const frames = [...this.breathFrames, this.defaultTexture];
+        const step = (i: number) => {
+            if (!this.canSway()) return onDone();
+            this.setPose(frames[i]);
+            if (i === frames.length - 1) return onDone();
+            this.scene.time.delayedCall(BREATH.FRAME_MS, () => step(i + 1));
+        };
+        step(0);
     }
 
     get isAsleep() {
