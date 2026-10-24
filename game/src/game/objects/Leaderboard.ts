@@ -28,8 +28,8 @@ export class Leaderboard extends GameObjects.Container {
         groundHeroes.forEach((def, i) => {
             const rowY = PANEL.ROWS_Y + i * ROW_HEIGHT;
 
-            const swatch = this.headIcon(scene, def, 16, ROW_HEIGHT / 2);
-            const label = scene.add.text(34, ROW_HEIGHT / 2, RosterConfig.ropNameForSlug(def.slug) ?? def.slug, {
+            const swatch = this.headIcon(scene, def, 22, ROW_HEIGHT / 2);
+            const label = scene.add.text(44, ROW_HEIGHT / 2, RosterConfig.ropNameForSlug(def.slug) ?? def.slug, {
                 fontFamily: HUD.FONT,
                 fontSize: '13px',
                 resolution: GAME.RENDER_SCALE,
@@ -63,7 +63,7 @@ export class Leaderboard extends GameObjects.Container {
         const crop = { x: bx, y: by, w: bw, h: bh };
         icon.setCrop(crop.x, crop.y, crop.w, crop.h);
         icon.setOrigin((crop.x + crop.w / 2) / icon.width, (crop.y + crop.h / 2) / icon.height);
-        icon.setScale(Math.min(HEAD_ICON_HEIGHT / crop.h, 26 / crop.w)); // never wider than 26 px: it must stay inside the frame
+        icon.setScale(Math.min(HEAD_ICON_HEIGHT / crop.h, 30 / crop.w)); // never wider than 30 px: it must stay inside the frame
         return icon;
     }
 
