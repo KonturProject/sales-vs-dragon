@@ -26,6 +26,9 @@ Standalone-проект (не привязан к таблице через Exte
 | `listSales` | `pin, limit?` (до 200) | последние **непустые** строки «Sales» (заполнено Date/Amount/ROP), новые сверху + итоги недели + план; время в дате показывается, только если оно не 00:00 |
 | `addSale` | `pin, rop, amount, date?, requestId?` | пишет оплату в **первую свободную строку после последней продажи** (только ячейки Date/Amount/ROP; колонки D/F, где лежат имена и список для выпадающего ROP, не трогаются). Дата без времени = полночь. Реальная оплата |
 | `changePin` | `pin, newPin` | меняет PIN (4–12 цифр); новый хранится хешем `salt$sha256`, старый открытый `ADMIN_PIN` удаляется |
+| `setAvgCheck` | `pin, avgCheck` | средний чек месяца (0 — не задан); хранится в «Settings» как `AvgCheck`, отдаётся публичным GET как `avgCheck`; по нему игра решает, сколько ударов в серии |
+| `countSales` | `pin, from, to` | только чтение: сколько оплат и на какую сумму лежит в «Sales» за дни `from..to` (`yyyy-MM-dd`, включительно) |
+| `replaceSales` | `pin, from, to, rows, requestId?` | заменяет ВСЕ оплаты за дни `from..to` строками `rows [{date, amount, rop}]` (до 3000, все внутри периода): освободившиеся строки используются заново, остальное дописывается после последней продажи, лишние очищаются (ячейки, не строки). Так админка загружает выгрузку оплат |
 | `command` | `pin, type, args?, requestId?` | просит экраны показать анимацию: `hit {rop, amount}`, `fall {hero, mode}`, `wake`, `growl`, `confetti`, `celebrate` |
 
 Ответ — `{ok: true, ...}` или `{ok: false, error}`: `invalid_pin`, `locked` (+`retryAfterSec`), `bad_request` (+`field`; запрос неверный), `server_error` (+`detail`; неполадка на стороне сервера — нет листа, не взялась блокировка). После 5 неверных PIN за 10 минут API блокируется на 10 минут (счётчик в `CacheService`). Команды хранятся в Script Properties (последние 10, свежее 10 минут), **в таблицу не пишутся**; экраны забирают их при обычном опросе (≤15 с). `requestId` защищает от дублей при повторной отправке (кэш на 10 минут).
@@ -36,7 +39,7 @@ Standalone-проект (не привязан к таблице через Exte
 
 ```bash
 cd game
-npm run test:backend      # 22 теста: PIN, блокировка, addSale, listSales, changePin, команды
+npm run test:backend      # 30 тестов: PIN, блокировка, addSale, listSales, changePin, команды
 npm run mock-backend      # тот же Code.gs по http://localhost:8787/exec (PIN 1234, данные в памяти)
 ```
 

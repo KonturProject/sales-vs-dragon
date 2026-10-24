@@ -128,13 +128,19 @@ export const HORDE = {
 const HIT_PHASES = { WINDUP_MS: 160, RUN_MS: 280, RECOIL_MS: 140, RETURN_MS: 420 } as const;
 
 /**
- * One sale = a series of blows on the same goblin: MIN for a small sale, one more per STEP_DELTA roubles, at most MAX,
- * GAP_MS apart. The longest series (HIT_DURATION_MS in HERO) is what the goblin's fall waits for.
+ * One sale = a series of blows on the same goblin, GAP_MS apart: MIN blows for a small payment, MIN + 1 for an ordinary
+ * one, MAX for a big one. "Small" and "big" are measured against the month's average check set in the admin
+ * (below SMALL_OF_AVG of it / from BIG_OF_AVG of it); with no average check set, MIN plus one blow per STEP_DELTA roubles.
+ * The longest series (HIT_DURATION_MS in HERO) is what the goblin's fall waits for.
  */
-const BLOWS = { MIN: 2, MAX: 4, STEP_DELTA: 60_000, GAP_MS: 260 } as const;
+const BLOWS = { MIN: 2, MAX: 4, SMALL_OF_AVG: 0.5, BIG_OF_AVG: 1.5, STEP_DELTA: 60_000, GAP_MS: 260 } as const;
 
-/** How many blows a sale of `delta` roubles gets. */
-export function blowsFor(delta: number): number {
+/** How many blows a payment of `delta` roubles gets, given the month's average check (0 = not set). */
+export function blowsFor(delta: number, avgCheck = 0): number {
+    if (avgCheck > 0) {
+        const times = delta / avgCheck;
+        return times < BLOWS.SMALL_OF_AVG ? BLOWS.MIN : times < BLOWS.BIG_OF_AVG ? BLOWS.MIN + 1 : BLOWS.MAX;
+    }
     return Math.min(BLOWS.MAX, BLOWS.MIN + Math.max(0, Math.floor(delta / BLOWS.STEP_DELTA)));
 }
 
@@ -243,12 +249,6 @@ export const BREATH = {
     /** Pause before the next character takes over, random in [min, max]. */
     GAP_MS: [500, 1400],
     LANES: 2,
-} as const;
-
-export const FX = {
-    /** Comic onomatopoeia text only pops up for sales at/above this size — keeps
-     * frequent small sales from making the screen "chatter" with text every hit. */
-    COMIC_TEXT_MIN_DELTA: 50000,
 } as const;
 
 export const POLL = {

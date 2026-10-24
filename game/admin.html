@@ -24,6 +24,7 @@
                 <button type="button" class="tab-btn active" data-tab="plan" role="tab">План</button>
                 <button type="button" class="tab-btn" data-tab="table" role="tab">Таблица</button>
                 <button type="button" class="tab-btn" data-tab="add" role="tab">Внести оплату</button>
+                <button type="button" class="tab-btn" data-tab="import" role="tab">Загрузить оплаты</button>
                 <button type="button" class="tab-btn" data-tab="anim" role="tab">Анимации</button>
                 <button type="button" class="tab-btn" data-tab="pin" role="tab">PIN-код</button>
             </nav>
@@ -36,6 +37,12 @@
                     <input id="plan" name="plan" type="number" min="0" step="1000" placeholder="5000000" required />
                     <button type="submit">Сохранить план<span class="btn-arrow">→</span></button>
                 </form>
+                <form id="avg-form">
+                    <label for="avg">Средний чек за месяц, ₽ <span class="optional">(0 — не задан)</span></label>
+                    <input id="avg" name="avg" type="number" min="0" step="1" placeholder="40000" required />
+                    <button type="submit">Сохранить средний чек<span class="btn-arrow">→</span></button>
+                </form>
+                <p class="hint">По среднему чеку игра решает, большая оплата или маленькая: меньше половины среднего — 2 удара героя, обычная — 3, от полутора средних — 4 и яркая надпись. Обновляйте раз в месяц. Пока он не задан, размер серии считается по сумме.</p>
             </section>
 
             <!-- Таблица -->
@@ -65,6 +72,27 @@
                     <button type="submit">Внести оплату<span class="btn-arrow">→</span></button>
                 </form>
                 <p class="hint">Это настоящая запись в листе «Sales»: сдвинет итоги недели, а на экранах герой отдела ударит гоблина (если вносите «сейчас»).</p>
+            </section>
+
+            <!-- Загрузить оплаты -->
+            <section class="tab" data-tab-panel="import" hidden>
+                <p class="hint">Файл .xlsx с оплатами из учётной системы (колонки «Дата оплаты», «Группа», «Сумма»). Все оплаты в таблице за выбранный период будут заменены оплатами из файла. Обычно это вчерашний день: внесённое вручную в течение дня заменится точными данными.</p>
+                <label for="import-file">Файл с оплатами</label>
+                <input id="import-file" type="file" accept=".xlsx" />
+                <div id="import-result" hidden>
+                    <div id="import-summary" class="chips"></div>
+                    <p id="import-skipped" class="hint" hidden></p>
+                    <div class="inline-field">
+                        <label for="import-from">Период с</label>
+                        <input id="import-from" type="date" />
+                    </div>
+                    <div class="inline-field">
+                        <label for="import-to">по</label>
+                        <input id="import-to" type="date" />
+                    </div>
+                    <p id="import-compare" class="current-status"></p>
+                    <button type="button" id="import-run">Заменить оплаты за период<span class="btn-arrow">→</span></button>
+                </div>
             </section>
 
             <!-- Анимации -->

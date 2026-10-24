@@ -64,7 +64,7 @@ export async function callBackend<T extends object = Record<string, never>>(
 }
 
 /** Public, unauthenticated status (aggregates only) — same endpoint the game polls. */
-export async function fetchPublicStatus(): Promise<{ ok: boolean; plan: number; totalThisWeek: number } | null> {
+export async function fetchPublicStatus(): Promise<{ ok: boolean; plan: number; avgCheck?: number; totalThisWeek: number } | null> {
     try {
         const config = await loadConfig();
         const url = config.useMock || !config.appsScriptUrl ? 'assets/mock/mock-status.json' : config.appsScriptUrl;

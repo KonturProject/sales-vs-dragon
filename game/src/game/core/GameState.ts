@@ -20,6 +20,8 @@ export interface StatusResponse {
     weekStart: string;
     weekEnd: string;
     plan: number;
+    /** The month's average check set in the admin (0 / absent = not set): how big a payment is, for the blow series. */
+    avgCheck?: number;
     totalThisWeek: number;
     totalMeters?: number;
     metersRemaining?: number;
@@ -38,6 +40,8 @@ export interface StatusResponse {
  */
 class GameStateStore {
     plan = 0;
+    /** The month's average check from the admin; 0 = not set (blow series then go by HERO.BLOWS.STEP_DELTA). */
+    avgCheck = 0;
     totalThisWeek = 0;
     byRop: Record<string, number> = {};
     /** true once at least one poll has landed — first poll is a baseline, never diffed */
@@ -63,6 +67,7 @@ class GameStateStore {
 
         this.byRop = nextByRop;
         this.plan = status.plan;
+        this.avgCheck = status.avgCheck ?? 0;
         this.totalThisWeek = status.totalThisWeek;
         this.lastUpdated = status.lastUpdated;
         this.lastFetchOk = true;
@@ -86,6 +91,7 @@ class GameStateStore {
 
     reset() {
         this.plan = 0;
+        this.avgCheck = 0;
         this.totalThisWeek = 0;
         this.byRop = {};
         this.hasBaseline = false;

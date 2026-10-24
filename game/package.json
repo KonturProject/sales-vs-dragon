@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "phaser": "4.0.0",
+    "read-excel-file": "^9.3.12",
     "terser": "^5.39.0"
   }
 }

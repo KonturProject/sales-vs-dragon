@@ -92,7 +92,7 @@ export function emitShockwaveRing(scene: Scene, x: number, y: number, color: num
 
 const ONOMATOPOEIA = ['БАМ!', 'ХРЯСЬ!', 'БАХ!', 'ХЛОП!'];
 
-/** Comic-book impact text, Reserved for bigger sales — see FX.COMIC_TEXT_MIN_DELTA. */
+/** Comic-book impact text, Reserved for big payments — see HeroSprite.playHit (a full-length blow series). */
 export function emitComicText(scene: Scene, x: number, y: number): GameObjects.Text {
     const text = ONOMATOPOEIA[Math.floor(Math.random() * ONOMATOPOEIA.length)];
     const t = scene.add.text(x, y, text, {

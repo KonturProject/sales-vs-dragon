@@ -59,6 +59,16 @@ class FakeSheet {
                 }
                 return out;
             },
+            setValues: (values) => {
+                values.forEach((line, r) => {
+                    while (sheet.rows.length < row + r) sheet.rows.push([]);
+                    line.forEach((value, c) => {
+                        const target = sheet.rows[row - 1 + r];
+                        while (target.length < col - 1 + c) target.push('');
+                        target[col - 1 + c] = value;
+                    });
+                });
+            },
             setValue: (value) => {
                 while (sheet.rows.length < row) sheet.rows.push([]);
                 sheet.rows[row - 1][col - 1] = value;

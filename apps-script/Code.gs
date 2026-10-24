@@ -15,6 +15,9 @@
  *     { action: 'setPlan',   pin, plan }                            weekly plan (also the legacy { pin, plan } form)
  *     { action: 'listSales', pin, limit? }                          latest rows of "Sales" + week status + settings
  *     { action: 'addSale',   pin, rop, amount, date?, requestId? }  append a payment row to "Sales"
+ *     { action: 'setAvgCheck', pin, avgCheck }                      the month's average check (0 = off); the game sizes a blow series by it
+ *     { action: 'countSales',  pin, from, to }                      how many sales / how much the sheet holds for the days from..to ('yyyy-MM-dd')
+ *     { action: 'replaceSales', pin, from, to, rows, requestId? }   swap every sale of the days from..to for rows [{date,amount,rop}] (the admin's file import)
  *     { action: 'changePin', pin, newPin }                          change the PIN (stored as a salted hash)
  *     { action: 'command',   pin, type, args?, requestId? }         show an animation on the displays
  *   Commands are pure visual triggers: they live in Script Properties, never in the spreadsheet,
@@ -44,6 +47,7 @@ var COMMAND_KEEP = 10;
 var COMMAND_MAX_AGE_MS = 10 * 60 * 1000;
 var REQUEST_CACHE_SEC = 600;
 var MAX_AMOUNT = 100000000;
+var MAX_IMPORT_ROWS = 3000;
 
 var COMMAND_HEROES = ['random', 'hero_lion', 'hero_scrooge', 'hero_grinch', 'hero_yoda', 'hero_neznaika', 'hero_minion'];
 
@@ -116,6 +120,9 @@ var ACTIONS_ = {
   setPlan: actionSetPlan_,
   listSales: actionListSales_,
   addSale: actionAddSale_,
+  setAvgCheck: actionSetAvgCheck_,
+  countSales: actionCountSales_,
+  replaceSales: actionReplaceSales_,
   changePin: actionChangePin_,
   command: actionCommand_
 };
@@ -171,7 +178,7 @@ function actionListSales_(body) {
     shown: sales.length,
     sales: sales,
     status: status,
-    settings: { WeeklyPlan: status.plan }
+    settings: { WeeklyPlan: status.plan, AvgCheck: status.avgCheck }
   };
 }
 
@@ -206,6 +213,116 @@ function actionAddSale_(body) {
       status: computeWeeklyStatus_()
     };
   });
+}
+
+/** The month's average check: the game compares each payment with it to decide how big a blow series it gets. 0 = not set. */
+function actionSetAvgCheck_(body) {
+  var avg = Number(body.avgCheck);
+  if (body.avgCheck === '' || body.avgCheck === null || body.avgCheck === undefined || !isFinite(avg) || avg < 0 || avg > MAX_AMOUNT) return badRequest_('avgCheck');
+  avg = Math.round(avg * 100) / 100;
+  return withLock_(function () {
+    setSetting_('AvgCheck', avg);
+    return { ok: true, avgCheck: avg };
+  });
+}
+
+/** Read-only: what the sheet holds for the days from..to now (shown before an import replaces them). */
+function actionCountSales_(body) {
+  var period = parsePeriod_(body.from, body.to);
+  if (!period) return badRequest_('period');
+  var tz = getSpreadsheet_().getSpreadsheetTimeZone();
+  var sheet = getSalesSheet_();
+  var cols = salesColumns_(sheet);
+  var values = sheet.getRange(1, 1, Math.max(1, sheet.getLastRow()), sheet.getLastColumn()).getValues();
+  var count = 0;
+  var total = 0;
+  for (var i = 1; i < values.length; i++) {
+    if (isBlankSale_(values[i], cols)) continue;
+    var day = saleDay_(values[i][cols.date], tz);
+    if (day >= period.from && day <= period.to) {
+      count++;
+      total += Number(values[i][cols.amount]) || 0;
+    }
+  }
+  return { ok: true, count: count, total: total };
+}
+
+/**
+ * Replaces every sale of the days from..to (inclusive) by the given rows. Freed rows are reused first, the rest go after the
+ * last sale, surplus freed rows are cleared (cells only — a whole-row delete would shift the ROP drop-down's list in column F).
+ * Real data: the displays see the changed totals at their next poll like any other change, so a department whose total went UP
+ * gets one strike for the difference (replacing yesterday's hand-entered payments with the same amounts changes nothing).
+ */
+function actionReplaceSales_(body) {
+  var period = parsePeriod_(body.from, body.to);
+  if (!period) return badRequest_('period');
+  if (!Array.isArray(body.rows) || body.rows.length > MAX_IMPORT_ROWS) return badRequest_('rows');
+
+  var tz = getSpreadsheet_().getSpreadsheetTimeZone();
+  var incoming = [];
+  for (var k = 0; k < body.rows.length; k++) {
+    var r = body.rows[k];
+    var rop = r && validateRop_(r.rop);
+    var amount = r && validateAmount_(r.amount);
+    var rowDay = r && /^\d{4}-\d{2}-\d{2}$/.test(String(r.date)) ? String(r.date) : '';
+    if (!rop || amount === null || !rowDay || rowDay < period.from || rowDay > period.to) return badRequest_('rows');
+    incoming.push({ day: rowDay, amount: amount, rop: rop });
+  }
+  incoming.sort(function (a, b) { return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; });
+
+  return withLock_(function () {
+    var sheet = getSalesSheet_();
+    var cols = salesColumns_(sheet);
+    var values = sheet.getRange(1, 1, Math.max(1, sheet.getLastRow()), sheet.getLastColumn()).getValues();
+    var last = 1;
+    var freed = [];
+    for (var i = 1; i < values.length; i++) {
+      if (isBlankSale_(values[i], cols)) continue;
+      last = i + 1;
+      var day = saleDay_(values[i][cols.date], tz);
+      if (day >= period.from && day <= period.to) freed.push(i + 1);
+    }
+
+    var writes = {}; // sheet row (1-based) -> [date, amount, rop]
+    for (var n = 0; n < incoming.length; n++) {
+      var target = n < freed.length ? freed[n] : ++last;
+      writes[target] = [Utilities.parseDate(incoming[n].day + 'T00:00', tz, "yyyy-MM-dd'T'HH:mm"), incoming[n].amount, incoming[n].rop];
+    }
+    for (var m = incoming.length; m < freed.length; m++) writes[freed[m]] = ['', '', ''];
+    writeSaleRows_(sheet, cols, writes);
+
+    return { ok: true, removed: freed.length, added: incoming.length, status: computeWeeklyStatus_() };
+  });
+}
+
+/** Writes { sheetRow: [date, amount, rop] } touching only the three sales columns; one call per run of consecutive rows when they sit side by side. */
+function writeSaleRows_(sheet, cols, writes) {
+  var rowNumbers = Object.keys(writes).map(Number).sort(function (a, b) { return a - b; });
+  var idx = [cols.date, cols.amount, cols.rop].sort(function (a, b) { return a - b; });
+  var adjacent = idx[1] === idx[0] + 1 && idx[2] === idx[1] + 1;
+  var runStart = 0;
+  while (runStart < rowNumbers.length) {
+    var runEnd = runStart;
+    while (runEnd + 1 < rowNumbers.length && rowNumbers[runEnd + 1] === rowNumbers[runEnd] + 1) runEnd++;
+    if (adjacent) {
+      var block = [];
+      for (var r = runStart; r <= runEnd; r++) {
+        var line = [];
+        line[cols.date - idx[0]] = writes[rowNumbers[r]][0];
+        line[cols.amount - idx[0]] = writes[rowNumbers[r]][1];
+        line[cols.rop - idx[0]] = writes[rowNumbers[r]][2];
+        block.push(line);
+      }
+      sheet.getRange(rowNumbers[runStart], idx[0] + 1, block.length, 3).setValues(block);
+    } else {
+      for (var q = runStart; q <= runEnd; q++) {
+        sheet.getRange(rowNumbers[q], cols.date + 1).setValue(writes[rowNumbers[q]][0]);
+        sheet.getRange(rowNumbers[q], cols.amount + 1).setValue(writes[rowNumbers[q]][1]);
+        sheet.getRange(rowNumbers[q], cols.rop + 1).setValue(writes[rowNumbers[q]][2]);
+      }
+    }
+    runStart = runEnd + 1;
+  }
 }
 
 function actionChangePin_(body) {
@@ -311,6 +428,21 @@ function parseSaleDate_(value) {
   return date;
 }
 
+/** { from, to } as 'yyyy-MM-dd' strings, or null: both well-formed, from <= to, at most a year long. */
+function parsePeriod_(from, to) {
+  var f = String(from === undefined || from === null ? '' : from);
+  var t = String(to === undefined || to === null ? '' : to);
+  var shape = /^\d{4}-\d{2}-\d{2}$/;
+  if (!shape.test(f) || !shape.test(t) || f > t) return null;
+  if (Date.parse(t + 'T00:00:00Z') - Date.parse(f + 'T00:00:00Z') > 366 * 86400000) return null;
+  return { from: f, to: t };
+}
+
+/** The calendar day of a "Sales" Date cell as 'yyyy-MM-dd' (a real date in the sheet's time zone, or text that starts with one). */
+function saleDay_(raw, tz) {
+  return raw instanceof Date ? Utilities.formatDate(raw, tz, 'yyyy-MM-dd') : String(raw).slice(0, 10);
+}
+
 /** A "Sales" row with nothing in Date, Amount and ROP (other columns are ignored). */
 function isBlankSale_(row, cols) {
   return String(row[cols.date]).trim() === '' && String(row[cols.amount]).trim() === '' && String(row[cols.rop]).trim() === '';
@@ -365,6 +497,7 @@ function computeWeeklyStatus_() {
 
   var settings = readSettings_();
   var plan = Number(settings.WeeklyPlan) || 0;
+  var avgCheck = Number(settings.AvgCheck) || 0;
   var totalMeters = Number(settings.TotalMeters) || 300;
   var ratio = plan > 0 ? Math.min(1, Math.max(0, totalThisWeek / plan)) : 0;
   var metersRemaining = Math.round(totalMeters * (1 - ratio));
@@ -379,6 +512,7 @@ function computeWeeklyStatus_() {
     weekStart: Utilities.formatDate(bounds.start, tz, 'yyyy-MM-dd'),
     weekEnd: Utilities.formatDate(bounds.end, tz, 'yyyy-MM-dd'),
     plan: plan,
+    avgCheck: avgCheck,
     totalThisWeek: totalThisWeek,
     totalMeters: totalMeters,
     metersRemaining: metersRemaining,

@@ -262,3 +262,103 @@ test('a retried command (same requestId) is queued once', () => {
     b.post({ action: 'command', pin: PIN, type: 'growl', requestId: 'r1' });
     assert.equal(b.get().commands.length, 1);
 });
+
+/* ----------------------------------------------------- average check, payment import */
+
+const day = (d) => d.toISOString ? d.toISOString().slice(0, 10) : String(d);
+
+test('setAvgCheck stores the month\'s average check, the public status carries it, bad values are refused, 0 switches it off', () => {
+    const b = loadBackend();
+    assert.equal(b.get().avgCheck, 0, 'not set yet');
+    assert.deepEqual(b.post({ action: 'setAvgCheck', pin: PIN, avgCheck: 40197.7 }), { ok: true, avgCheck: 40197.7 });
+    assert.equal(b.get().avgCheck, 40197.7);
+    assert.equal(b.post({ action: 'listSales', pin: PIN }).settings.AvgCheck, 40197.7);
+    assert.equal(b.post({ action: 'setAvgCheck', pin: PIN, avgCheck: -1 }).error, 'bad_request');
+    assert.equal(b.post({ action: 'setAvgCheck', pin: PIN, avgCheck: 'abc' }).field, 'avgCheck');
+    assert.equal(b.post({ action: 'setAvgCheck', pin: 'no', avgCheck: 5 }).error, 'invalid_pin');
+    assert.equal(b.post({ action: 'setAvgCheck', pin: PIN, avgCheck: 0 }).ok, true);
+    assert.equal(b.get().avgCheck, 0);
+});
+
+test('countSales reports how many sales a period holds now (whole days, both ends included)', () => {
+    const b = loadBackend(); // sales on 2026-09-21 (400 000), 2026-09-22 (250 000), 2026-09-23 (120 000)
+    assert.deepEqual(b.post({ action: 'countSales', pin: PIN, from: '2026-09-22', to: '2026-09-23' }), { ok: true, count: 2, total: 370000 });
+    assert.deepEqual(b.post({ action: 'countSales', pin: PIN, from: '2026-09-24', to: '2026-09-30' }), { ok: true, count: 0, total: 0 });
+    assert.equal(b.post({ action: 'countSales', pin: PIN, from: '2026-09-23', to: '2026-09-22' }).field, 'period');
+    assert.equal(b.post({ action: 'countSales', pin: PIN, from: 'x', to: '2026-09-22' }).field, 'period');
+});
+
+test('replaceSales swaps every sale of the period for the uploaded ones and leaves the other days alone', () => {
+    const b = loadBackend();
+    const res = b.post({
+        action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23',
+        rows: [
+            { date: '2026-09-23', amount: 30000, rop: 'СР3' },
+            { date: '2026-09-22', amount: 20000, rop: 'СР5' },
+            { date: '2026-09-22', amount: 10000, rop: 'СР5' },
+        ],
+    });
+    assert.equal(res.ok, true);
+    assert.equal(res.removed, 2);
+    assert.equal(res.added, 3);
+    const rows = saleRows(b);
+    assert.equal(rows.length, 4, '1 untouched + 3 uploaded');
+    assert.deepEqual(rows.filter(r => r[2] === 'СР1' && r[1] === 400000).length, 1, 'the day before the period is untouched');
+    assert.deepEqual(rows.map(r => r[1]).sort((x, y) => x - y), [10000, 20000, 30000, 400000]);
+    assert.equal(res.status.totalThisWeek, 400000 + 60000);
+    assert.equal(b.post({ action: 'countSales', pin: PIN, from: '2026-09-22', to: '2026-09-23' }).count, 3);
+});
+
+test('replaceSales reuses the freed rows first, appends after the last sale and leaves the other columns alone', () => {
+    const b = loadBackend();
+    b.post({
+        action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23',
+        rows: [1, 2, 3, 4].map(i => ({ date: '2026-09-23', amount: i * 1000, rop: 'СР2' })),
+    });
+    const all = b.salesRows();
+    assert.equal(all.length, 7, 'no row was appended at the bottom of the sheet');
+    assert.equal(all[1][3], 'Андреева Татьяна', 'names column untouched');
+    assert.equal(all[4][5], 'СР5', 'drop-down list untouched');
+    assert.equal(saleRows(b).length, 1 + 4);
+    assert.equal(typeof all[4][0].getTime, 'function', 'a real date, at midnight');
+});
+
+test('replaceSales with fewer uploaded rows than there were clears the leftovers (never deletes a row)', () => {
+    const b = loadBackend();
+    const before = b.salesRows().length;
+    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23', rows: [{ date: '2026-09-22', amount: 5000, rop: 'СР6' }] });
+    assert.equal(b.salesRows().length, before);
+    assert.equal(saleRows(b).length, 2);
+});
+
+test('replaceSales with no rows empties the period', () => {
+    const b = loadBackend();
+    const res = b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-21', to: '2026-09-23', rows: [] });
+    assert.equal(res.ok, true);
+    assert.equal(res.removed, 3);
+    assert.equal(saleRows(b).length, 0);
+});
+
+test('replaceSales refuses a bad period, a row outside it, a bad department or amount, and changes nothing', () => {
+    const b = loadBackend();
+    const good = { date: '2026-09-22', amount: 1000, rop: 'СР1' };
+    const call = (extra) => b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23', rows: [good], ...extra });
+    assert.equal(call({ from: '2026-09-24' }).field, 'period');
+    assert.equal(call({ to: 'tomorrow' }).field, 'period');
+    assert.equal(call({ rows: 'many' }).field, 'rows');
+    assert.equal(call({ rows: [{ ...good, date: '2026-09-25' }] }).field, 'rows', 'outside the period');
+    assert.equal(call({ rows: [{ ...good, rop: '<b>' }] }).field, 'rows');
+    assert.equal(call({ rows: [{ ...good, amount: -5 }] }).field, 'rows');
+    assert.equal(call({ rows: [{ ...good, amount: 'abc' }] }).field, 'rows');
+    assert.equal(call({ rows: Array.from({ length: 3001 }, () => good) }).field, 'rows', 'too many');
+    assert.equal(b.post({ action: 'replaceSales', pin: 'no', from: '2026-09-22', to: '2026-09-23', rows: [good] }).error, 'invalid_pin');
+    assert.equal(saleRows(b).length, 3, 'nothing was changed by any refused call');
+});
+
+test('replaceSales repeated with the same requestId does not run twice', () => {
+    const b = loadBackend();
+    const body = { action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23', rows: [{ date: '2026-09-22', amount: 777, rop: 'СР9' }], requestId: 'abc' };
+    assert.equal(b.post(body).added, 1);
+    assert.equal(b.post(body).added, 1);
+    assert.equal(saleRows(b).filter(r => r[1] === 777).length, 1);
+});

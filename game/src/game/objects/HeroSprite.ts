@@ -1,6 +1,7 @@
 import { Display, GameObjects, Scene } from 'phaser';
 import { HeroDef } from '../systems/RosterConfig';
-import { BREATH, FX, GAME, HERO, blowsFor } from '../core/Constants';
+import { BREATH, GAME, HERO, blowsFor } from '../core/Constants';
+import { GameState } from '../core/GameState';
 import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 import { Breather } from '../systems/BreathRelay';
@@ -272,7 +273,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
 
         // The attacks of this series, one per blow, round-robin through the hero's four. The first blow frame's width
         // decides where the hero has to stop so the weapon/fist/fire — not the hero's centre — touches the goblin.
-        const total = blowsFor(delta);
+        const total = blowsFor(delta, GameState.avgCheck);
         const series = Array.from({ length: total }, () => {
             if (this.attacks.length === 0) return { windup: this.defaultTexture, blow: this.defaultTexture };
             const attack = this.attacks[this.nextAttackIndex];
@@ -292,7 +293,8 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
             emitBurst(this.scene, impactX, impactY, this.tintColor, first ? 14 : 8);
             this.scene.cameras.main.shake(first ? 100 : 70, first ? 0.0035 : 0.0025);
             if (first) emitShockwaveRing(this.scene, impactX, impactY, this.tintColor);
-            if (first && delta >= FX.COMIC_TEXT_MIN_DELTA) emitComicText(this.scene, impactX, impactY - 20);
+            // Comic text only for a big payment (the longest series) — keeps small sales from making the screen "chatter".
+            if (first && total >= HERO.BLOWS.MAX) emitComicText(this.scene, impactX, impactY - 20);
             onBlow(index, total);
         };
 

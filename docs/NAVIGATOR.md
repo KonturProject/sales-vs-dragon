@@ -27,6 +27,7 @@
 | Загрузка текстур, плейсхолдеры | `game/src/game/scenes/Preloader.ts` |
 | Какой отдел → какой герой | `game/src/game/config/ropMapping.json`, `heroRoster.json`, `systems/RosterConfig.ts` |
 | Админка (вкладки, кнопки анимаций, PIN) | `game/admin.html`, `game/src-admin/main.ts`, `api.ts`, `styles.css` |
+| Загрузка оплат из .xlsx, средний чек | `game/src-admin/importPayments.ts` (разбор файла), `main.ts` (вкладки «План» и «Загрузить оплаты»), `Code.gs` (`setAvgCheck`, `countSales`, `replaceSales`), тесты `apps-script/test/` |
 | Бэкенд (таблица, план, команды, PIN) | `apps-script/Code.gs` (деплой руками!), тесты `apps-script/test/`, описание `apps-script/README.md` |
 | Пересобрать героев/Круэллу | `game/tools/build-sprites.py` ← `assets-source/hero-sheets/`, `character-refs/` |
 | Пересобрать гоблинов/вождя/сокровища | `game/tools/build-horde.py` ← `assets-source/horde/` |
