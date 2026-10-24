@@ -123,6 +123,17 @@ export const HORDE = {
 /** Phases of HeroSprite.playHit: wind-up, dash to the dragon, recoil on contact, walk back. */
 const HIT_PHASES = { WINDUP_MS: 160, RUN_MS: 280, RECOIL_MS: 140, RETURN_MS: 420 } as const;
 
+/**
+ * One sale = a series of blows on the same goblin: MIN for a small sale, one more per STEP_DELTA roubles, at most MAX,
+ * GAP_MS apart. The longest series (HIT_DURATION_MS in HERO) is what the goblin's fall waits for.
+ */
+const BLOWS = { MIN: 2, MAX: 4, STEP_DELTA: 60_000, GAP_MS: 260 } as const;
+
+/** How many blows a sale of `delta` roubles gets. */
+export function blowsFor(delta: number): number {
+    return Math.min(BLOWS.MAX, BLOWS.MIN + Math.max(0, Math.floor(delta / BLOWS.STEP_DELTA)));
+}
+
 export const HERO = {
     /**
      * Where each department hero stands (feet), in roster order left -> right.
@@ -146,7 +157,8 @@ export const HERO = {
     /** From the sale event to the blow landing on the dragon — hit effects, sound and the dragon's reaction key off this. */
     IMPACT_MS: HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS,
     /** Whole playHit chain, event to the hero standing back at its slot. */
-    HIT_DURATION_MS: HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS + HIT_PHASES.RECOIL_MS + HIT_PHASES.RETURN_MS,
+    HIT_DURATION_MS: HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS + (BLOWS.MAX - 1) * BLOWS.GAP_MS + HIT_PHASES.RECOIL_MS + HIT_PHASES.RETURN_MS,
+    BLOWS,
     /**
      * Fallback for where a hero's leading edge (weapon/fist/fire) stops. Normally the horde says it
      * (Horde.strikeFrontX: the front of the nearest goblin still standing, then of the chief).

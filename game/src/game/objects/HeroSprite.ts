@@ -1,6 +1,6 @@
 import { Display, GameObjects, Scene } from 'phaser';
 import { HeroDef } from '../systems/RosterConfig';
-import { BREATH, FX, GAME, HERO } from '../core/Constants';
+import { BREATH, FX, GAME, HERO, blowsFor } from '../core/Constants';
 import { emitBurst, emitSparkles, emitShockwaveRing, emitComicText, Swayable } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
 import { Breather } from '../systems/BreathRelay';
@@ -246,19 +246,18 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
 
     /**
      * Wind-up, dash along the hero's own row until its leading edge reaches
-     * `strikeFrontX` (the front of the nearest goblin still standing), blow + recoil there, then
-     * walk back to the slot. The colored burst, shake and ring fire when the hero
-     * *arrives* (HERO.IMPACT_MS after the call), which is also when PenScene makes
-     * the dragon react. Used by the hero whose department (СР-код) the incoming
-     * sale is mapped to. The run is along x only — the feet stay on the floor at
-     * the slot's y (a front-row hero may cover a back-row one for a moment; that
-     * reads better than running everyone down to one spot in front of the gold).
+     * `strikeFrontX` (the front of the nearest goblin still standing), then a series of blows
+     * (blowsFor(delta), each with the next attack's wind-up and blow frames, HERO.BLOWS.GAP_MS apart), a recoil, and the
+     * walk back to the slot. The first blow lands HERO.IMPACT_MS after the call; `onBlow(index, total)` runs as each
+     * blow lands — PenScene makes the goblin react, thuds and cheers from it. Used by the hero whose department (СР-код)
+     * the incoming sale is mapped to. The run is along x only — the feet stay on the floor at the slot's y (a front-row
+     * hero may cover a back-row one for a moment; that reads better than running everyone down to one spot).
      */
-    playHit(delta = 0, strikeFrontX: number = HERO.STRIKE_FRONT_X) {
+    playHit(delta = 0, strikeFrontX: number = HERO.STRIKE_FRONT_X, onBlow: (index: number, total: number) => void = () => {}) {
         if (this.posture !== 'standing') this.wakeInstant(); // a sale needs this hero right now
         if (this.busy) return;
         this.busy = true;
-        // The idle sway may be mid-tilt; the chain below takes over angle/scale.
+        // The idle breath may be mid-way; the chain below takes over the pose, angle and scale.
         this.scene.tweens.killTweensOf(this);
 
         const s = this.baseScale;
@@ -266,25 +265,48 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
         // Just in front of same-row neighbours the dash passes through, still behind the row in front.
         this.setDepth(restDepth + 1);
 
-        // Pick the attack now: the blow frame's width decides where the hero has to stop so the
-        // weapon/fist/fire — not the hero's centre — touches the dragon.
-        const attack = this.attacks.length > 0
-            ? this.attacks[this.nextAttackIndex]
-            : { windup: this.defaultTexture, blow: this.defaultTexture };
-        if (this.attacks.length > 0) this.nextAttackIndex = (this.nextAttackIndex + 1) % this.attacks.length;
-        const poseWidth = this.scene.textures.getFrame(attack.blow).width;
+        // The attacks of this series, one per blow, round-robin through the hero's four. The first blow frame's width
+        // decides where the hero has to stop so the weapon/fist/fire — not the hero's centre — touches the goblin.
+        const total = blowsFor(delta);
+        const series = Array.from({ length: total }, () => {
+            if (this.attacks.length === 0) return { windup: this.defaultTexture, blow: this.defaultTexture };
+            const attack = this.attacks[this.nextAttackIndex];
+            this.nextAttackIndex = (this.nextAttackIndex + 1) % this.attacks.length;
+            return attack;
+        });
+        const poseWidth = this.scene.textures.getFrame(series[0].blow).width;
         const strikeX = Math.max(this.baseX, strikeFrontX - (poseWidth * s * 1.12) / 2);
         let ghostTick = 0;
+
+        // Contact: the blow frame (fire, glow, slash) and effects at the leading edge, where it lands.
+        const land = (index: number) => {
+            this.setPose(series[index].blow);
+            const impactX = this.x + this.sprite.width * this.scaleX * 0.35;
+            const impactY = this.y - this.sprite.height * this.baseScale * 0.55;
+            const first = index === 0;
+            emitBurst(this.scene, impactX, impactY, this.tintColor, first ? 14 : 8);
+            this.scene.cameras.main.shake(first ? 100 : 70, first ? 0.0035 : 0.0025);
+            if (first) emitShockwaveRing(this.scene, impactX, impactY, this.tintColor);
+            if (first && delta >= FX.COMIC_TEXT_MIN_DELTA) emitComicText(this.scene, impactX, impactY - 20);
+            onBlow(index, total);
+        };
+
+        const half = HERO.BLOWS.GAP_MS / 2;
+        const repeats = series.slice(1).flatMap((attack, k) => [
+            // pull back a step with the next attack's wind-up, then strike again
+            { x: strikeX - 14, scaleX: s * 0.97, scaleY: s * 1.03, angle: -2, duration: half, ease: 'Quad.easeOut', onStart: () => this.setPose(attack.windup) },
+            { x: strikeX, scaleX: s * 1.1, scaleY: s * 0.94, angle: 5, duration: half, ease: 'Quad.easeIn', onComplete: () => land(k + 1) },
+        ]);
 
         this.scene.tweens.chain({
             targets: this,
             tweens: [
                 // anticipation: brief squat/wind-up, a step back
                 { x: this.baseX - HERO.WINDUP_BACK, scaleX: s * 0.92, scaleY: s * 1.06, angle: -3, duration: HERO.WINDUP_MS, ease: 'Quad.easeOut' },
-                // dash to the dragon, accelerating into the blow
+                // dash to the goblin, accelerating into the first blow
                 {
                     x: strikeX, scaleX: s * 1.12, scaleY: s * 0.92, angle: 6, duration: HERO.RUN_MS, ease: 'Quad.easeIn',
-                    onStart: () => this.setPose(attack.windup),
+                    onStart: () => this.setPose(series[0].windup),
                     onUpdate: () => {
                         // Low-alpha afterimage trail, throttled so it doesn't spawn one every frame.
                         if (++ghostTick % 3 !== 0) return;
@@ -302,18 +324,10 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
                             onComplete: () => ghost.destroy(),
                         });
                     },
-                    onComplete: () => {
-                        // Contact: the blow frame (fire, glow, slash) and effects at the leading edge, where it lands.
-                        this.setPose(attack.blow);
-                        const impactX = this.x + this.sprite.width * this.scaleX * 0.35;
-                        const impactY = this.y - this.sprite.height * this.baseScale * 0.55;
-                        emitBurst(this.scene, impactX, impactY, this.tintColor, 14);
-                        this.scene.cameras.main.shake(100, 0.0035);
-                        emitShockwaveRing(this.scene, impactX, impactY, this.tintColor);
-                        if (delta >= FX.COMIC_TEXT_MIN_DELTA) emitComicText(this.scene, impactX, impactY - 20);
-                    },
+                    onComplete: () => land(0),
                 },
-                // recoil off the dragon
+                ...repeats,
+                // recoil off the goblin
                 { x: strikeX - 8, scaleX: s * 0.98, scaleY: s * 1.02, angle: -1.5, duration: HERO.RECOIL_MS, ease: 'Sine.easeOut' },
                 // turn around and walk back to the slot
                 {

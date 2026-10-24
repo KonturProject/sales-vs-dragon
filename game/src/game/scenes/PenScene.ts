@@ -91,20 +91,24 @@ export class PenScene extends Scene {
     }
 
     private onMoneyIn(payload: MoneyInPayload) {
-        // The hero dashes to the front goblin; the thud, the goblin's reaction and the
-        // lead's cheer all land with the blow, not with the sale event.
-        this.time.delayedCall(HERO.IMPACT_MS, () => AudioSystem.playHitThud());
-
+        // The hero dashes to the front goblin and lands a series of blows; the thud, the goblin's reaction and the
+        // lead's cheer all land with the blows, not with the sale event.
         const hero = this.heroes.get(payload.heroSlug);
         if (hero) {
-            hero.playHit(payload.delta, this.horde.strikeFrontX());
-            this.time.delayedCall(HERO.IMPACT_MS, () => this.horde.reactToHit());
+            hero.playHit(payload.delta, this.horde.strikeFrontX(), index => {
+                AudioSystem.playHitThud();
+                this.horde.reactToHit();
+                if (index === 0) this.lead?.playCheer();
+            });
             const bar = hudToWorld(HUD.BAR_X + HUD.BAR_WIDTH / 2, HUD.BAR_Y + HUD.BAR_HEIGHT / 2);
             emitFloatingAmount(this, hero.x, hero.y - 150, payload.delta, bar.x, bar.y);
+        } else {
+            // A sale of no mapped department: no hero to run, but the thud and the lead's cheer still land together.
+            this.time.delayedCall(HERO.IMPACT_MS, () => {
+                AudioSystem.playHitThud();
+                this.lead?.playCheer();
+            });
         }
-
-        // The branch lead isn't tied to one department — she cheers on every sale.
-        this.time.delayedCall(HERO.IMPACT_MS, () => this.lead?.playCheer());
     }
 
     /**
