@@ -32,7 +32,7 @@ TREE_X = 500      # where it goes: behind the heroes (logical x ~330 of 1280)
 # The stage shows a wider world than the 1280x720 the pack picture was laid out for (WORLD in Constants.ts). The picture
 # keeps its place (it covered world 0..1280 x 0..720 at 1.5 px per unit); the margins around it are made by mirroring
 # the edges, blurring them progressively and darkening everything, so no seam shows.
-WORLD_ZOOM = 0.78            # must equal WORLD.ZOOM in Constants.ts
+WORLD_ZOOM = 0.72            # must equal WORLD.ZOOM in Constants.ts
 LOGICAL = (1280, 720)        # must equal GAME.WIDTH/HEIGHT
 PX_PER_UNIT = 1.5            # the pack picture is 1920 px for 1280 logical units
 MARGIN_BLUR_PX = 14
