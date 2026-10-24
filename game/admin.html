@@ -54,7 +54,7 @@
                 <div id="table-summary" class="chips"></div>
                 <div class="table-wrap">
                     <table id="sales-table">
-                        <thead><tr><th>Строка</th><th>Дата</th><th>Отдел</th><th class="num">Сумма, ₽</th></tr></thead>
+                        <thead><tr><th>Строка</th><th>Дата</th><th>Отдел</th><th class="num">Сумма, ₽</th><th></th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -68,7 +68,7 @@
                     <label for="add-amount">Сумма, ₽</label>
                     <input id="add-amount" type="number" min="1" step="any" placeholder="150000" required />
                     <label for="add-date">Дата и время <span class="optional">(необязательно — по умолчанию сейчас)</span></label>
-                    <input id="add-date" type="datetime-local" />
+                    <input id="add-date" type="datetime-local" min="2000-01-01T00:00" max="2099-12-31T23:59" />
                     <button type="submit">Внести оплату<span class="btn-arrow">→</span></button>
                 </form>
                 <p class="hint">Это настоящая запись в листе «Sales»: сдвинет итоги недели, а на экранах герой отдела ударит гоблина (если вносите «сейчас»).</p>
@@ -84,11 +84,11 @@
                     <p id="import-skipped" class="hint" hidden></p>
                     <div class="inline-field">
                         <label for="import-from">Период с</label>
-                        <input id="import-from" type="date" />
+                        <input id="import-from" type="date" min="2000-01-01" max="2099-12-31" />
                     </div>
                     <div class="inline-field">
                         <label for="import-to">по</label>
-                        <input id="import-to" type="date" />
+                        <input id="import-to" type="date" min="2000-01-01" max="2099-12-31" />
                     </div>
                     <p id="import-compare" class="current-status"></p>
                     <button type="button" id="import-run">Заменить оплаты за период<span class="btn-arrow">→</span></button>

@@ -15,6 +15,7 @@
  *     { action: 'setPlan',   pin, plan }                            weekly plan (also the legacy { pin, plan } form)
  *     { action: 'listSales', pin, limit? }                          latest rows of "Sales" + week status + settings
  *     { action: 'addSale',   pin, rop, amount, date?, requestId? }  append a payment row to "Sales"
+ *     { action: 'deleteSale', pin, row, date, amount, rop, requestId? } clear one payment row (only if it still holds exactly that payment)
  *     { action: 'setAvgCheck', pin, avgCheck }                      the month's average check (0 = off); the game sizes a blow series by it
  *     { action: 'countSales',  pin, from, to }                      how many sales / how much the sheet holds for the days from..to ('yyyy-MM-dd')
  *     { action: 'replaceSales', pin, from, to, rows, requestId? }   swap every sale of the days from..to for rows [{date,amount,rop}] (the admin's file import)
@@ -120,6 +121,7 @@ var ACTIONS_ = {
   setPlan: actionSetPlan_,
   listSales: actionListSales_,
   addSale: actionAddSale_,
+  deleteSale: actionDeleteSale_,
   setAvgCheck: actionSetAvgCheck_,
   countSales: actionCountSales_,
   replaceSales: actionReplaceSales_,
@@ -212,6 +214,38 @@ function actionAddSale_(body) {
       added: { row: target, date: formatSaleDate_(date, getSpreadsheet_().getSpreadsheetTimeZone()), amount: amount, rop: rop },
       status: computeWeeklyStatus_()
     };
+  });
+}
+
+/**
+ * Deletes one payment: clears its Date/Amount/ROP cells (never the row — that would shift the ROP drop-down's list in column F).
+ * The admin sends what it saw in the table (row, date, amount, rop); if the row holds anything else by now (the table was
+ * edited or re-imported meanwhile) nothing is touched and 'row_changed' comes back, so the wrong payment can never be deleted.
+ */
+function actionDeleteSale_(body) {
+  var row = Math.floor(Number(body.row));
+  if (!isFinite(row) || row < 2) return badRequest_('row');
+  var day = String(body.date === undefined || body.date === null ? '' : body.date).slice(0, 10);
+  var amount = Number(body.amount);
+  var rop = String(body.rop === undefined || body.rop === null ? '' : body.rop).trim();
+
+  return withLock_(function () {
+    var tz = getSpreadsheet_().getSpreadsheetTimeZone();
+    var sheet = getSalesSheet_();
+    var cols = salesColumns_(sheet);
+    if (row > sheet.getLastRow()) return { ok: false, error: 'row_changed' };
+
+    var current = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (isBlankSale_(current, cols)) return { ok: false, error: 'row_changed' };
+    var same = saleDay_(current[cols.date], tz) === day
+      && Number(current[cols.amount]) === amount
+      && String(current[cols.rop]).trim() === rop;
+    if (!same) return { ok: false, error: 'row_changed' };
+
+    sheet.getRange(row, cols.date + 1).setValue('');
+    sheet.getRange(row, cols.amount + 1).setValue('');
+    sheet.getRange(row, cols.rop + 1).setValue('');
+    return { ok: true, deleted: { row: row, date: day, amount: amount, rop: rop }, status: computeWeeklyStatus_() };
   });
 }
 

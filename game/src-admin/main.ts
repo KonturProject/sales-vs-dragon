@@ -74,6 +74,10 @@ function reportError(err: unknown) {
         case 'demo':
             setStatus('Демо-режим (config.json.useMock=true): бэкенд отключён.', 'error');
             break;
+        case 'row_changed':
+            setStatus('Строка в таблице уже другая — обновляю таблицу. Проверьте и повторите.', 'error');
+            loadTable();
+            break;
         case 'bad_request':
             setStatus(`Проверьте поле: ${FIELD_NAMES[err.detail?.field ?? ''] ?? err.detail?.field ?? 'данные'}.`, 'error');
             break;
@@ -203,6 +207,14 @@ async function loadTable() {
                 if (i === 3) td.className = 'num';
                 tr.append(td);
             });
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'row-del';
+            del.textContent = 'Удалить';
+            del.addEventListener('click', () => deleteSale(sale, del));
+            const last = document.createElement('td');
+            last.append(del);
+            tr.append(last);
             return tr;
         }));
 
@@ -216,6 +228,28 @@ async function loadTable() {
 
 $('table-refresh').addEventListener('click', loadTable);
 
+/** Clears one payment. The backend refuses (row_changed) if the row no longer holds exactly what this table showed. */
+async function deleteSale(sale: Sale, button: HTMLButtonElement) {
+    const text = `${sale.rop} — ${money(sale.amount)} (${sale.date}, строка ${sale.row})`;
+    if (!confirm(`Удалить оплату из таблицы?\n\n${text}\n\nЭто настоящая запись: итоги недели изменятся, вернуть её можно только внесением заново.`)) return;
+    button.disabled = true;
+    setStatus('Удаляю…');
+    try {
+        await callBackend('deleteSale', pin, {
+            row: sale.row,
+            date: sale.date,
+            amount: sale.amount,
+            rop: sale.rop,
+            requestId: newRequestId(),
+        });
+        await loadTable();
+        setStatus(`Удалено: ${text}`, 'ok'); // after the reload, which clears the status line
+    } catch (err) {
+        reportError(err);
+        button.disabled = false;
+    }
+}
+
 /* ------------------------------------------------------------- add sale */
 
 const addForm = $<HTMLFormElement>('add-form');
@@ -225,11 +259,26 @@ const addDate = $<HTMLInputElement>('add-date');
 
 for (const dep of DEPARTMENTS) addRop.add(new Option(dep.label, dep.rop));
 
+/** A date field takes a 5th year digit in Chrome (years up to 275760): ignore it, the year stays four digits. */
+function limitYearTo4Digits(input: HTMLInputElement) {
+    input.addEventListener('input', () => {
+        const m = /^(\d{4})\d+(.*)$/.exec(input.value);
+        if (m) input.value = m[1] + m[2];
+    });
+}
+[addDate, $<HTMLInputElement>('import-from'), $<HTMLInputElement>('import-to')].forEach(limitYearTo4Digits);
+
+const yearOk = (value: string) => value === '' || (Number(value.slice(0, 4)) >= 2000 && Number(value.slice(0, 4)) <= 2099);
+
 addForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const amount = Number(addAmount.value);
     if (!(amount > 0)) {
         setStatus('Введите сумму больше нуля.', 'error');
+        return;
+    }
+    if (!yearOk(addDate.value)) {
+        setStatus('Проверьте год в дате: он должен быть четырёхзначным.', 'error');
         return;
     }
     const when = addDate.value ? addDate.value.replace('T', ' ') : 'сейчас';

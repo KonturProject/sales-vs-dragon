@@ -362,3 +362,46 @@ test('replaceSales repeated with the same requestId does not run twice', () => {
     assert.equal(b.post(body).added, 1);
     assert.equal(saleRows(b).filter(r => r[1] === 777).length, 1);
 });
+
+/* ------------------------------------------------------------------ deleteSale */
+
+test('deleteSale clears the three cells of that row (never the row itself) and leaves the other columns alone', () => {
+    const b = loadBackend(); // row 3 = 250 000, СР2, the day before the clock
+    const rowsBefore = b.salesRows().length;
+    const listed = b.post({ action: 'listSales', pin: PIN }).sales.find(s => s.row === 3);
+    const res = b.post({ action: 'deleteSale', pin: PIN, row: 3, date: listed.date, amount: 250000, rop: 'СР2' });
+    assert.equal(res.ok, true);
+    assert.equal(res.deleted.row, 3);
+    assert.equal(res.status.totalThisWeek, 400000 + 120000);
+    assert.equal(b.salesRows().length, rowsBefore, 'no row removed: that would shift the drop-down list');
+    const row = b.salesRows()[2];
+    assert.deepEqual([row[0], row[1], row[2]], ['', '', '']);
+    assert.equal(row[3], 'Татиевская Нина', 'names column untouched');
+    assert.equal(row[5], 'СР2', 'drop-down list untouched');
+    assert.equal(saleRows(b).length, 2);
+    assert.equal(b.post({ action: 'addSale', pin: PIN, rop: 'СР9', amount: 1000 }).added.row, 5, 'the freed middle row does not move the append position');
+});
+
+test('deleteSale refuses when the row is not what the admin saw, and changes nothing', () => {
+    const b = loadBackend();
+    const date = b.post({ action: 'listSales', pin: PIN }).sales.find(s => s.row === 3).date;
+    const call = (extra) => b.post({ action: 'deleteSale', pin: PIN, row: 3, date, amount: 250000, rop: 'СР2', ...extra });
+    assert.equal(call({ amount: 250001 }).error, 'row_changed');
+    assert.equal(call({ rop: 'СР1' }).error, 'row_changed');
+    assert.equal(call({ date: '2026-01-01' }).error, 'row_changed');
+    assert.equal(call({ row: 6 }).error, 'row_changed', 'a row with no sale in it');
+    assert.equal(call({ row: 99 }).error, 'row_changed', 'a row past the end');
+    assert.equal(call({ row: 1 }).field, 'row', 'the header');
+    assert.equal(call({ row: 'x' }).field, 'row');
+    assert.equal(b.post({ action: 'deleteSale', pin: 'no', row: 3, date, amount: 250000, rop: 'СР2' }).error, 'invalid_pin');
+    assert.equal(saleRows(b).length, 3);
+});
+
+test('deleteSale repeated with the same requestId answers the same and deletes once', () => {
+    const b = loadBackend();
+    const date = b.post({ action: 'listSales', pin: PIN }).sales.find(s => s.row === 3).date;
+    const body = { action: 'deleteSale', pin: PIN, row: 3, date, amount: 250000, rop: 'СР2', requestId: 'del1' };
+    assert.equal(b.post(body).ok, true);
+    assert.equal(b.post(body).ok, true, 'the retry gets the first answer, not row_changed');
+    assert.equal(saleRows(b).length, 2);
+});

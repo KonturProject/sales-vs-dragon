@@ -260,6 +260,23 @@ button.tab-btn.active {
     color: #03151a;
 }
 
+button.row-del {
+    width: auto;
+    margin: 0;
+    padding: 2px 9px;
+    font-size: 13px;
+    line-height: 1.4;
+    background: transparent;
+    color: #ff8a8a;
+    border: 1px solid rgba(255, 138, 138, 0.45);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button.row-del:hover {
+    background: rgba(255, 138, 138, 0.14);
+}
+
 button.ghost {
     margin: 0;
     padding: 9px 14px;
