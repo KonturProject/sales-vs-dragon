@@ -27,7 +27,10 @@ npx tsc --noEmit -p tsconfig.json   # type-check — there is no lint/test suite
 npm run deploy          # build + publish dist/ to the gh-pages branch (GitHub Pages)
 python tools/build-sprites.py       # heroes (assets-source/hero-sheets) + Cruella (character-refs) -> public/assets/sprites (Python + Pillow + numpy + scipy); the old dragon/mountain/cave only with `--only dragon mountain bg`
 python tools/build-horde.py         # goblins, chief (+ his sitting poses), treasure: assets-source/horde -> public/assets/sprites/horde + src/game/config/horde.json
-python tools/build-background.py    # forest (face-tree moved left) + campfire: assets-source/background -> bg_forest.jpg, campfire.png
+python tools/build-background.py    # forest (face-tree moved left, widened for WORLD, darkened) + campfire: assets-source/background -> bg_forest.jpg, campfire.png
+python tools/build-camp.py          # tent + totem (darkened): assets-source/camp -> camp_tent.png, camp_totem.png
+python tools/build-hud.py           # Halloween HUD pieces (bar in 3 parts, big frame, small panel): assets-source/HUD -> public/assets/hud
+python tools/build-sprites.py --only stance   # the breathing strips: assets-source/stance-sheets -> <hero>.png (frame 1) + <hero>_breath2..4
 ```
 
 There is no test runner and no linter configured — `tsc --noEmit` is the only thing to run after a change, and manual verification in a browser is expected for anything visual (see Verification below).
@@ -73,3 +76,15 @@ This project has no automated visual tests. The established workflow for any UI/
 ## Backend / secrets
 
 The Apps Script admin PIN lives only in that script's `PropertiesService`, never in this repo or its docs (the source in `apps-script/Code.gs` has a placeholder). The Apps Script Web App URL in `game/public/config.json` is intentionally public — its public GET only serves aggregated totals and animation commands, never raw sheet rows (raw rows come only through PIN-gated `listSales`); this was an explicit, confirmed decision, not an oversight. See `docs/MAP.md` for the real Sheet URL, Web App URL, and deploy details.
+
+
+## Camp scene, breathing, strike series, HUD (2026-10-24)
+
+Spec `docs/superpowers/specs/2026-10-24-camp-scene-design.md`, plan `docs/superpowers/plans/2026-10-24-camp-scene.md`.
+
+- **Wider world**: `PenScene` uses `fitCameraToWorld` (`core/Render.ts`): its camera is zoomed out by `WORLD.ZOOM` (0.72, `Constants.ts`), so the stage shows `WORLD.W × WORLD.H` (≈1778×1000) around the logical 1280×720, reaching `WORLD.X0/Y0` (negative) past the edges. `HUDScene` keeps the plain 1280×720 camera. `bg_forest.jpg` (2667×1500) covers the whole view; `tools/build-background.py` must use the same `WORLD_ZOOM`. Stage → HUD coordinates: `hudToWorld`. Hero/goblin/chief sizes are relative to a hero (~215 world px with `HERO.SLOTS[].scale`): goblins `HORDE.GOBLIN_HEIGHT` (scale per def = height / `topPx`), chief `HORDE.CHIEF.height` (a hero ×1.5).
+- **Camp**: goblins in a half-ring round the campfire (`HORDE.GOBLINS`, `CAMPFIRE`), chief behind, two tents (`TENTS`) and two totem "gate" posts (`TOTEMS`) drawn by `objects/CampProps.ts` (mirrored, bigger the nearer the bottom). `objects/Firelight.ts` = additive glow *under* all characters, flickering with the fire's own frames (no tween/timer).
+- **Breathing** (`systems/BreathRelay.ts`, `BREATH` in `Constants.ts`): heroes and Cruella play the user's weight-shift strips (`<hero>` = frame 1, `<hero>_breath2..4`), goblins and chief a 4-step scaleY (`breatheScale` in `Horde.ts`), two at a time, passed round. **Timers and texture swaps only — never tweens**: `PowerSaver.tweenMotion` counts any ordinary tween as active motion. The old random tilt (`startIdleSway`) was removed.
+- **Strike series**: one sale = `blowsFor(delta)` blows (2..4, `HERO.BLOWS`) on the nearest goblin; `HeroSprite.playHit(delta, strikeFrontX, onBlow)` calls `onBlow(index,total)` as each lands (thud, goblin reaction, Cruella's cheer on the first). `HERO.HIT_DURATION_MS` covers the longest series — the goblin's fall waits for it.
+- **HUD** (`HUD` in `Constants.ts` holds every position/size/colour): the weekly bar is the user's pumpkin-and-lantern frame in three pictures (left, middle stretched, right; `public/assets/hud`), the fill is drawn in code between `TRACK_INSET_LEFT/RIGHT`; the leaderboard sits on the small panel (`HUD.PANEL`), the victory banner on the big frame (`HUD.BANNER`). Font is a system serif (`HUD.FONT`) until a Halloween font is bundled.
+- **Seeing the real picture**: the in-app browser pane is small; for pixel checks use `__debug.game.renderer.snapshot(img => …)` and POST the PNG to a throw-away local receiver, then `Read` the file.

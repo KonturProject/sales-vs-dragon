@@ -18,6 +18,10 @@
 | Откуда берутся данные, diff, расчёт «голов» | `game/src/game/systems/DataPollingService.ts`, `core/GameState.ts` |
 | Простой команды (герои падают, вождь рычит сам) | `game/src/game/systems/IdleMood.ts` |
 | Частота кадров / лёгкость для слабых ноутбуков | `core/Quality.ts`, `core/PowerSaver.ts` |
+| Дыхание персонажей по очереди | `game/src/game/systems/BreathRelay.ts`, `BREATH` в `Constants.ts`, `HeroSprite.breathe`, `Horde.breathers` |
+| Свет костра, палатки, тотемы | `objects/Firelight.ts`, `objects/CampProps.ts`, `HORDE.FIRELIGHT/TENTS/TOTEMS` |
+| Ширина мира / камера сцены | `WORLD` в `Constants.ts`, `core/Render.ts` (`fitCameraToWorld`, `hudToWorld`) |
+| Хэллоуинский HUD (полоса, рамки, шрифт) | `HUD` в `Constants.ts`, `scenes/HUDScene.ts`, `objects/Leaderboard.ts`, `tools/build-hud.py` |
 | Звуки | `game/src/game/systems/Audio.ts` |
 | Частицы, вспышки, конфетти, покачивание | `game/src/game/systems/Fx.ts` |
 | Загрузка текстур, плейсхолдеры | `game/src/game/scenes/Preloader.ts` |
@@ -27,6 +31,9 @@
 | Пересобрать героев/Круэллу | `game/tools/build-sprites.py` ← `assets-source/hero-sheets/`, `character-refs/` |
 | Пересобрать гоблинов/вождя/сокровища | `game/tools/build-horde.py` ← `assets-source/horde/` |
 | Пересобрать фон/костёр | `game/tools/build-background.py` ← `assets-source/background/` |
+| Пересобрать палатку/тотем | `game/tools/build-camp.py` ← `assets-source/camp/` |
+| Пересобрать HUD-рамки | `game/tools/build-hud.py` ← `assets-source/HUD/` → `public/assets/hud/` |
+| Пересобрать стойку/дыхание героев | `python tools/build-sprites.py --only stance` ← `assets-source/stance-sheets/` |
 | Задеплоить | `cd game && npm run deploy` (только по явному «да» пользователя) |
 
 ## 2. Документы (что в каком)
@@ -93,7 +100,9 @@ Phaser, список сцен Boot→Preloader→PenScene+HUDScene, PowerSaver).
 | `Horde.ts` | `Goblin`×5 (сокровища у ног, ранение, смерть, полёт добычи, замах), `Chief` (рык, «сидит и плачет»), `Horde` (`setHeads`, `strikeFrontX`, `reactToHit`, `loseHead`, `defeat`, `growl`, `span`, костёр), `HORDE_DEFS`, `animKey`, `playFrames` | PenScene, Preloader, IdleMood |
 | `HeroSprite.ts` | герой: `playHit` (рывок→удар→возврат, 4 атаки по кругу), `playCelebrate`, `fallOver`, `doze`, `wakeUp`, редкий наклон | PenScene, IdleMood |
 | `LeadSprite.ts` | Круэлла: `playCheer`, `playVictory`, `resetPose` | PenScene |
-| `Leaderboard.ts` | мини-рейтинг 6 отделов | HUDScene |
+| `Leaderboard.ts` | мини-рейтинг 6 отделов на малой хэллоуинской панели | HUDScene |
+| `Firelight.ts` | тёплое пятно света костра под персонажами, мерцает кадрами костра | Horde |
+| `CampProps.ts` | две палатки и два тотема-ворота (отражены, крупнее ближе к низу) | PenScene |
 
 ### systems/
 | Файл | Отвечает за | Используют |
@@ -101,8 +110,9 @@ Phaser, список сцен Boot→Preloader→PenScene+HUDScene, PowerSaver).
 | `DataPollingService.ts` | опрос бэкенда (hedge, таймауты), diff → `MONEY_IN`, `DRAGON_HEAD_LOST/DEFEATED`, `ADMIN_COMMAND`; baseline | PenScene, main |
 | `IdleMood.ts` | простой: герои падают/засыпают через час без продаж; вождь рычит по расписанию | PenScene |
 | `RosterConfig.ts` | код отдела → герой, `heroDef()` над `config/*.json` | HeroSprite, Leaderboard, HUDScene, PenScene, Preloader, DataPollingService |
+| `BreathRelay.ts` | «дыхание по очереди»: `Breather`-интерфейс, 2 дорожки, только таймеры | PenScene |
 | `Audio.ts` | процедурный звук, mute в localStorage | HeroSprite, Horde, HUDScene, PenScene, main |
-| `Fx.ts` | `emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst`, `flashScreen`, `startIdleSway`, `addIdleFlicker` | HeroSprite, Horde, LeadSprite, HUDScene, PenScene |
+| `Fx.ts` | `emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst`, `flashScreen`, `addIdleFlicker` | HeroSprite, Horde, LeadSprite, HUDScene, PenScene |
 
 ### config/ (`game/src/game/config/`)
 | Файл | Что | Кто пишет |
@@ -134,7 +144,10 @@ Phaser, список сцен Boot→Preloader→PenScene+HUDScene, PowerSaver).
 | `horde/goblin1..5_{idle,hurt,die,attack}.png` | `build-horde.py` | Horde (у Метателя `goblin4` нет hurt/die — код-замена) |
 | `horde/goblin_chief_{idle,hurt,taunt,sit}.png` | `build-horde.py` (sit из `goblin-chief/sit.png`) | Horde (Chief) |
 | `horde/loot_*.png` (11) | `build-horde.py` ← `gold-bag/` | Horde (сокровища, куча у Круэллы) |
-| `bg_forest.jpg`, `campfire.png` | `build-background.py` | PenScene (фон), Horde (костёр) |
+| `bg_forest.jpg` (2667×1500), `campfire.png` | `build-background.py` | PenScene (фон), Horde (костёр) |
+| `camp_tent.png`, `camp_totem.png` | `build-camp.py` | CampProps |
+| `hero_*_breath2..4.png` (+ `hero_*.png` = кадр 1) | `build-sprites.py --only stance` ← `stance-sheets/` | HeroSprite, LeadSprite |
+| `public/assets/hud/hud_*.png` (5) | `build-hud.py` | HUDScene, Leaderboard |
 
 ## 6. Исходники `game/assets-source/`
 
@@ -143,6 +156,8 @@ Phaser, список сцен Boot→Preloader→PenScene+HUDScene, PowerSaver).
 | `hero-sheets/СРx - имя/sheet.png` | лист 4×4 на героя (хэллоуинские) | **в работе** |
 | `horde/` | hsdsz-листы (`goblin-scout/shaman/thrower/chief`), `goblin-chief/sit.png` (нарисован для игры), `gold-bag/` (`game_icons_coin_set.png`, `sheet.png`; `bag-of-coins.png` не используется), `README.md` | **в работе**, в git |
 | `background/` | `Battleground3/{Bright,Pale}/*.png` слои, `CampFireFinished.png`, `Battleground3.psd` (в git не кладём) | **в работе** |
+| `stance-sheets/` | листы «дыхания» (4 кадра в строку) на героя и Круэллу, нарисованы в ChatGPT | **нужны** |
+| `camp/`, `HUD/` | палатка и тотем; рамки HUD (полоса, большая рамка, малая панель) | **нужны** |
 | `character-refs/` | Круэлла (**нужна**), старые герои/дракон/гора/`фон.jfif` | только Круэлла; остальное — архив (собирается лишь по `--only`) |
 | `raw-pixel/` | прежний арт первой версии | архив, не используется |
 
