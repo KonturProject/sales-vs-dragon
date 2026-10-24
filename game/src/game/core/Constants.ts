@@ -229,6 +229,8 @@ export const HUD = {
         fillTop: 0xb6f23a,
         fillBottom: 0x3f9f10,
         divider: 0x1a0d2b,
+        /** The bright core of the day dividers on the weekly bar. */
+        dividerLight: 0xfff1d6,
         text: '#fff1d6',
         accent: '#ff9a3d',
         label: '#ffb35c',

@@ -246,21 +246,33 @@ export class HUDScene extends Scene {
         this.headsText.setText(heads > 0 ? `ГОБЛИНОВ: ${heads} / ${DAYS}` : 'ОРДА ПОВЕРЖЕНА');
     }
 
-    /** Day dividers on the weekly bar — each one is a daily plan (weekly plan / DAYS). */
+    /**
+     * Day dividers on the weekly bar — each segment is a daily plan (weekly plan / DAYS). A bright line with a dark edge
+     * (readable on the green fill and on the dark track alike) cuts the bar between the days and sticks out below it as a
+     * tick; each «день N» sits centred under its own segment, between two ticks.
+     */
     private drawDayMarks() {
         const g = this.add.graphics();
         g.setDepth(2);
-        g.lineStyle(2, HUD.COLORS.divider, 0.7);
-        for (let d = 1; d <= DAYS; d++) {
+        const top = BAR_Y - 1;
+        const bottom = BAR_Y + BAR_HEIGHT + 1;
+        const tickEnd = BAR_Y + BAR_HEIGHT + 14;
+        for (let d = 1; d < DAYS; d++) {
             const x = TRACK_X + (TRACK_WIDTH * d) / DAYS;
-            if (d < DAYS) g.lineBetween(x, BAR_Y + 2, x, BAR_Y + BAR_HEIGHT - 2);
-            this.add.text(x - 6, BAR_Y + BAR_HEIGHT + 20, `день ${d}`, {
+            g.lineStyle(5, HUD.COLORS.divider, 0.75).lineBetween(x, top, x, bottom);
+            g.lineStyle(2, HUD.COLORS.dividerLight, 0.95).lineBetween(x, top, x, bottom);
+            g.lineStyle(4, HUD.COLORS.divider, 0.6).lineBetween(x, bottom, x, tickEnd);
+            g.lineStyle(2, HUD.COLORS.dividerLight, 0.9).lineBetween(x, bottom, x, tickEnd);
+        }
+        for (let d = 1; d <= DAYS; d++) {
+            const centre = TRACK_X + (TRACK_WIDTH * (d - 0.5)) / DAYS;
+            this.add.text(centre, BAR_Y + BAR_HEIGHT + 20, `день ${d}`, {
                 fontFamily: GOTHIC,
                 fontStyle: 'italic',
                 fontSize: '13px',
                 resolution: GAME.RENDER_SCALE,
                 color: HUD.COLORS.label,
-            }).setOrigin(1, 0).setStroke(HUD.COLORS.stroke, 3).setDepth(4);
+            }).setOrigin(0.5, 0).setStroke(HUD.COLORS.stroke, 3).setDepth(4);
         }
     }
 
