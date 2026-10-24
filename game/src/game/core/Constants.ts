@@ -103,6 +103,17 @@ export const HORDE = {
     TENTS: [{ x: 1430, y: 468, scale: 0.85 }, { x: 1385, y: 655, scale: 1.2 }],
     /** Two totems on either side of the road: the gate of the camp. */
     TOTEMS: [{ x: 860, y: 470, scale: 0.85 }, { x: 880, y: 668, scale: 1.2 }],
+    /**
+     * The warm light of the campfire on the ground: a soft additive glow that lies *under* every character (depth
+     * below them, so it brightens the forest and the road, never the characters), flickering with the fire's own frames.
+     * RADIUS in world px; ALPHA/SCALE per fire frame (5 frames, 8 per second).
+     */
+    FIRELIGHT: {
+        RADIUS: 300,
+        LIFT: 24,
+        ALPHA: [0.62, 0.5, 0.68, 0.56, 0.46],
+        SCALE: [1, 0.94, 1.04, 0.97, 0.92],
+    },
     /** The hero's leading edge stops this far in front of the target's front edge. */
     STRIKE_GAP: 6,
     /** After the chief sits down he cries for this long, then keeps a still, tearful pose (no endless animation). */

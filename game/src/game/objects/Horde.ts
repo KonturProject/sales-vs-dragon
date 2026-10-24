@@ -3,6 +3,7 @@ import hordeConfig from '../config/horde.json';
 import { DAYS, DRAGON, HORDE } from '../core/Constants';
 import { emitBurst, emitCoinBurst, emitShockwaveRing, emitSparkles } from '../systems/Fx';
 import { AudioSystem } from '../systems/Audio';
+import { Firelight } from './Firelight';
 
 /** One creature's frames as tools/build-horde.py wrote them (config/horde.json). Lengths in texture px from the feet. */
 export interface CreatureDef {
@@ -363,7 +364,8 @@ export class Horde {
         if (!scene.anims.exists('campfire')) {
             scene.anims.create({ key: 'campfire', frames: scene.anims.generateFrameNumbers('campfire'), frameRate: fire.FPS, repeat: -1 });
         }
-        scene.add.sprite(fire.x, fire.y, 'campfire').setOrigin(0.5, 1).setScale(fire.scale).setDepth(fire.y).play('campfire');
+        const flames = scene.add.sprite(fire.x, fire.y, 'campfire').setOrigin(0.5, 1).setScale(fire.scale).setDepth(fire.y).play('campfire');
+        new Firelight(scene, flames);
         this.chief = new Chief(scene, HORDE_DEFS.chief);
         this.goblins = HORDE_DEFS.goblins.slice(0, DAYS).map((def, i) => new Goblin(scene, def, i));
     }
