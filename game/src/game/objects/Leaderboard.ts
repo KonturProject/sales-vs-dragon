@@ -1,10 +1,9 @@
 import { Display, GameObjects, Scene } from 'phaser';
-import { GAME, HeroSlug } from '../core/Constants';
+import { GAME, HUD, HeroSlug } from '../core/Constants';
 import { RosterConfig } from '../systems/RosterConfig';
 
-const ROW_HEIGHT = 22;
-const PANEL_WIDTH = 184;
-const PANEL_PADDING = 6;
+const ROW_HEIGHT = 20;
+const PANEL = HUD.PANEL;
 
 interface Row {
     row: GameObjects.Container;
@@ -20,32 +19,30 @@ export class Leaderboard extends GameObjects.Container {
 
         const groundHeroes = RosterConfig.heroes.filter(h => !h.lead);
 
-        const panel = scene.add.graphics();
-        panel.fillStyle(0x0d1220, 0.8);
-        panel.fillRoundedRect(0, 0, PANEL_WIDTH, PANEL_PADDING * 2 + groundHeroes.length * ROW_HEIGHT, 8);
-        panel.lineStyle(2, 0x3a5a7a, 0.7);
-        panel.strokeRoundedRect(0, 0, PANEL_WIDTH, PANEL_PADDING * 2 + groundHeroes.length * ROW_HEIGHT, 8);
+        const panel = scene.add.image(0, 0, 'hud_panel_small').setOrigin(0, 0);
+        panel.setScale(PANEL.WIDTH / panel.width);
         this.add(panel);
 
         groundHeroes.forEach((def, i) => {
-            const rowY = PANEL_PADDING + i * ROW_HEIGHT;
+            const rowY = PANEL.ROWS_Y + i * ROW_HEIGHT;
             const color = Display.Color.HexStringToColor(def.color).color;
 
-            const swatch = scene.add.circle(14, ROW_HEIGHT / 2, 6, color);
-            const label = scene.add.text(26, ROW_HEIGHT / 2, RosterConfig.ropNameForSlug(def.slug) ?? def.slug, {
-                fontFamily: 'Arial, sans-serif',
+            const swatch = scene.add.circle(8, ROW_HEIGHT / 2, 5, color);
+            const label = scene.add.text(20, ROW_HEIGHT / 2, RosterConfig.ropNameForSlug(def.slug) ?? def.slug, {
+                fontFamily: HUD.FONT,
                 fontSize: '13px',
                 resolution: GAME.RENDER_SCALE,
-                color: '#cfe3f5',
+                color: HUD.COLORS.label,
             }).setOrigin(0, 0.5);
-            const amountText = scene.add.text(PANEL_WIDTH - 10, ROW_HEIGHT / 2, '0 ₽', {
-                fontFamily: 'Arial Black, Arial, sans-serif',
+            const amountText = scene.add.text(PANEL.ROWS_WIDTH, ROW_HEIGHT / 2, '0 ₽', {
+                fontFamily: HUD.FONT,
+                fontStyle: 'bold',
                 fontSize: '13px',
                 resolution: GAME.RENDER_SCALE,
-                color: '#ffffff',
+                color: HUD.COLORS.text,
             }).setOrigin(1, 0.5);
 
-            const row = scene.add.container(0, rowY, [swatch, label, amountText]);
+            const row = scene.add.container(PANEL.ROWS_X, rowY, [swatch, label, amountText]);
             this.add(row);
             this.rows.set(def.slug, { row, amountText });
         });
@@ -71,7 +68,7 @@ export class Leaderboard extends GameObjects.Container {
             if (!entry) return;
 
             // Unchanged rank/amount (most polls) => no tween and no text redraw, so an idle display stays idle.
-            const targetY = PANEL_PADDING + rank * ROW_HEIGHT;
+            const targetY = PANEL.ROWS_Y + rank * ROW_HEIGHT;
             if (entry.row.y !== targetY) {
                 this.scene.tweens.add({
                     targets: entry.row,

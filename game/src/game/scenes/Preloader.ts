@@ -39,6 +39,10 @@ export class Preloader extends Scene {
             }
         }
         for (const t of HORDE_DEFS.treasures) this.load.image(t.key, `horde/${t.key}.png`);
+        // Halloween HUD pieces (tools/build-hud.py), they live in assets/hud, one level up from the sprites path.
+        for (const key of ['hud_bar_left', 'hud_bar_mid', 'hud_bar_right', 'hud_frame_big', 'hud_panel_small']) {
+            this.load.image(key, `../hud/${key}.png`);
+        }
         for (const hero of RosterConfig.heroes) {
             this.load.image(hero.sprite, `${hero.sprite}.png`);
             // Stance loop (breathing): the stance itself is frame 1, the rest are loaded here.

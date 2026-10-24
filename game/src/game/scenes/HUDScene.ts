@@ -12,7 +12,11 @@ const BAR_X = HUD.BAR_X;
 const BAR_Y = HUD.BAR_Y;
 const BAR_WIDTH = HUD.BAR_WIDTH;
 const BAR_HEIGHT = HUD.BAR_HEIGHT;
-const BAR_RADIUS = 15;
+const BAR_RADIUS = 8;
+/** The part of the dark track the fill (and the day dividers) use: right of the pumpkin, left of the lantern. */
+const TRACK_X = BAR_X + HUD.TRACK_INSET_LEFT;
+const TRACK_WIDTH = BAR_WIDTH - HUD.TRACK_INSET_LEFT - HUD.TRACK_INSET_RIGHT;
+const GOTHIC = HUD.FONT;
 
 const STATUS_X = GAME.WIDTH - 16;
 const STATUS_Y = GAME.HEIGHT - 16;
@@ -24,7 +28,6 @@ export class HUDScene extends Scene {
     private track!: GameObjects.Graphics;
     private fill!: GameObjects.Graphics;
     private label!: GameObjects.Text;
-    private title!: GameObjects.Text;
     private headsText!: GameObjects.Text;
     private banner: GameObjects.Container | null = null;
     private statusDot!: GameObjects.Arc;
@@ -44,34 +47,28 @@ export class HUDScene extends Scene {
     create() {
         fitCameraToGame(this);
 
-        this.title = this.add.text(GAME.WIDTH / 2, 4, 'НЕДЕЛЬНЫЙ ПЛАН — ОТДЕЛЫ ПРОТИВ ОРДЫ', {
-            fontFamily: 'Arial Black, Arial, sans-serif',
-            fontSize: '13px',
-            resolution: GAME.RENDER_SCALE,
-            color: '#8fb8d9',
-        }).setOrigin(0.5, 0).setAlpha(0.9);
-        this.title.setLetterSpacing?.(2);
-
-        this.track = this.add.graphics();
+        this.track = this.add.graphics().setDepth(0);
         this.drawTrack();
 
-        this.fill = this.add.graphics();
+        this.fill = this.add.graphics().setDepth(2);
         this.drawDayMarks();
 
-        this.headsText = this.add.text(GAME.WIDTH - 32, BAR_Y + BAR_HEIGHT + 24, '', {
-            fontFamily: 'Arial Black, Arial, sans-serif',
-            fontSize: '16px',
-            resolution: GAME.RENDER_SCALE,
-            color: '#ff9a7a',
-        }).setOrigin(1, 0).setShadow(0, 1, '#000000', 3, false, true);
-        this.renderHeads(GameState.headsRemaining);
-
-        this.label = this.add.text(BAR_X + BAR_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, '', {
-            fontFamily: 'Arial Black, Arial, sans-serif',
+        this.headsText = this.add.text(GAME.WIDTH - 32, BAR_Y + BAR_HEIGHT + 52, '', {
+            fontFamily: GOTHIC,
+            fontStyle: 'bold',
             fontSize: '18px',
             resolution: GAME.RENDER_SCALE,
-            color: '#ffffff',
-        }).setOrigin(0.5).setShadow(0, 1, '#000000', 3, false, true);
+            color: HUD.COLORS.accent,
+        }).setOrigin(1, 0).setStroke(HUD.COLORS.stroke, 4).setDepth(4);
+        this.renderHeads(GameState.headsRemaining);
+
+        this.label = this.add.text(TRACK_X + TRACK_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, '', {
+            fontFamily: GOTHIC,
+            fontStyle: 'bold',
+            fontSize: '17px',
+            resolution: GAME.RENDER_SCALE,
+            color: HUD.COLORS.text,
+        }).setOrigin(0.5).setStroke(HUD.COLORS.stroke, 4).setDepth(4);
 
         this.statusText = this.add.text(STATUS_X - 12, STATUS_Y, '', {
             fontFamily: 'Arial, sans-serif',
@@ -94,7 +91,7 @@ export class HUDScene extends Scene {
             this.renderMuteIcon();
         });
 
-        this.leaderboard = new Leaderboard(this, 16, 70);
+        this.leaderboard = new Leaderboard(this, HUD.PANEL.X, HUD.PANEL.Y);
         this.leaderboard.update(GameState.byRop);
 
         const handler = (payload: ProgressChangedPayload) => this.render(payload);
@@ -197,12 +194,18 @@ export class HUDScene extends Scene {
         }
     }
 
+    /** The Halloween frame: pumpkin end, a stretched middle, lantern end (tools/build-hud.py); the fill lives inside it. */
     private drawTrack() {
+        const cy = BAR_Y + BAR_HEIGHT / 2;
+        const k = HUD.PICTURE_SCALE;
+        const left = this.add.image(BAR_X, cy, 'hud_bar_left').setOrigin(0, 0.5).setScale(k).setDepth(3);
+        const right = this.add.image(BAR_X + BAR_WIDTH, cy, 'hud_bar_right').setOrigin(1, 0.5).setScale(k).setDepth(3);
+        const mid = this.add.image(BAR_X + left.displayWidth, cy, 'hud_bar_mid').setOrigin(0, 0.5).setDepth(1);
+        mid.setDisplaySize(BAR_WIDTH - left.displayWidth - right.displayWidth, mid.height * k);
+        // A dark bed under the fill, in case the frame's own track is lighter than it looked in the picture.
         this.track.clear();
-        this.track.fillStyle(0x0d1220, 0.85);
-        this.track.fillRoundedRect(BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS);
-        this.track.lineStyle(2, 0x3a5a7a, 0.9);
-        this.track.strokeRoundedRect(BAR_X, BAR_Y, BAR_WIDTH, BAR_HEIGHT, BAR_RADIUS);
+        this.track.fillStyle(0x0b0814, 1);
+        this.track.fillRoundedRect(TRACK_X, BAR_Y, TRACK_WIDTH, BAR_HEIGHT, BAR_RADIUS);
     }
 
     private render(payload: ProgressChangedPayload) {
@@ -252,43 +255,50 @@ export class HUDScene extends Scene {
     /** Day dividers on the weekly bar — each one is a daily plan (weekly plan / DAYS). */
     private drawDayMarks() {
         const g = this.add.graphics();
-        g.lineStyle(2, 0x8fb8d9, 0.55);
+        g.setDepth(2);
+        g.lineStyle(2, HUD.COLORS.divider, 0.7);
         for (let d = 1; d <= DAYS; d++) {
-            const x = BAR_X + (BAR_WIDTH * d) / DAYS;
-            if (d < DAYS) g.lineBetween(x, BAR_Y + 3, x, BAR_Y + BAR_HEIGHT - 3);
-            this.add.text(x - 6, BAR_Y + BAR_HEIGHT + 5, `день ${d}`, {
-                fontFamily: 'Arial, sans-serif',
-                fontSize: '12px',
+            const x = TRACK_X + (TRACK_WIDTH * d) / DAYS;
+            if (d < DAYS) g.lineBetween(x, BAR_Y + 2, x, BAR_Y + BAR_HEIGHT - 2);
+            this.add.text(x - 6, BAR_Y + BAR_HEIGHT + 20, `день ${d}`, {
+                fontFamily: GOTHIC,
+                fontStyle: 'italic',
+                fontSize: '13px',
                 resolution: GAME.RENDER_SCALE,
-                color: '#8fb8d9',
-            }).setOrigin(1, 0).setAlpha(0.9);
+                color: HUD.COLORS.label,
+            }).setOrigin(1, 0).setStroke(HUD.COLORS.stroke, 3).setDepth(4);
         }
     }
 
     private showVictoryBanner() {
         if (this.banner) return;
-        // Upper-left of the cave: the empty wall between the leaderboard and the horde,
-        // so the banner never covers the crying chief or the heroes.
-        const cx = 495;
-        const cy = 215;
-        const panel = this.add.graphics();
-        panel.fillStyle(0x0d1220, 0.88);
-        panel.fillRoundedRect(-290, -62, 580, 124, 18);
-        panel.lineStyle(4, 0xc9a227, 1);
-        panel.strokeRoundedRect(-290, -62, 580, 124, 18);
-        const title = this.add.text(0, -20, 'ОТДЕЛЫ ПОБЕДИЛИ!', {
-            fontFamily: 'Arial Black, Arial, sans-serif',
-            fontSize: '29px',
+        // Between the leaderboard and the horde, above the heroes' heads (HUD.BANNER). The big frame's hole is dark-filled
+        // and holds the text.
+        const { X: cx, Y: cy, WIDTH } = HUD.BANNER;
+        const frame = this.add.image(0, 0, 'hud_frame_big');
+        const k = WIDTH / frame.width;
+        frame.setScale(k);
+        // The frame's transparent hole in texture px (tools/build-hud.py prints its insets), and its centre's offset.
+        const holeW = 860 * k;
+        const holeH = 458 * k;
+        const bed = this.add.graphics();
+        bed.fillStyle(0x120a1c, 0.92);
+        bed.fillRoundedRect(10 * k - holeW / 2, 3 * k - holeH / 2, holeW, holeH, 10);
+        const title = this.add.text(0, -18, 'ОТДЕЛЫ ПОБЕДИЛИ!', {
+            fontFamily: GOTHIC,
+            fontStyle: 'bold',
+            fontSize: '23px',
             resolution: GAME.RENDER_SCALE,
-            color: '#ffe89a',
-        }).setOrigin(0.5).setStroke('#7a4a00', 6);
-        const sub = this.add.text(0, 28, 'План недели выполнен', {
-            fontFamily: 'Arial Black, Arial, sans-serif',
-            fontSize: '22px',
+            color: '#ffc864',
+        }).setOrigin(0.5).setStroke('#3a1500', 6);
+        const sub = this.add.text(0, 22, 'План недели выполнен', {
+            fontFamily: GOTHIC,
+            fontStyle: 'bold',
+            fontSize: '19px',
             resolution: GAME.RENDER_SCALE,
-            color: '#ffffff',
-        }).setOrigin(0.5).setShadow(0, 2, '#000000', 4, false, true);
-        this.banner = this.add.container(cx, cy, [panel, title, sub]).setDepth(3000).setAlpha(0).setScale(0.6);
+            color: '#b6f23a',
+        }).setOrigin(0.5).setStroke(HUD.COLORS.stroke, 4);
+        this.banner = this.add.container(cx, cy, [bed, frame, title, sub]).setDepth(3000).setAlpha(0).setScale(0.6);
         this.tweens.add({ targets: this.banner, alpha: 1, scale: 1, duration: 450, ease: 'Back.easeOut' });
         this.tweens.add({ targets: this.banner, scale: 1.03, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 500 });
     }
@@ -309,14 +319,14 @@ export class HUDScene extends Scene {
 
     private drawFill(ratio: number) {
         this.fill.clear();
-        const innerW = (BAR_WIDTH - 6) * ratio;
+        const innerW = TRACK_WIDTH * ratio;
         if (innerW <= 1) return;
 
-        this.fill.fillGradientStyle(0x2fd0e0, 0x2fd0e0, 0x36e08a, 0x36e08a, 1);
-        this.fill.fillRoundedRect(BAR_X + 3, BAR_Y + 3, innerW, BAR_HEIGHT - 6, BAR_RADIUS - 3);
+        this.fill.fillGradientStyle(HUD.COLORS.fillTop, HUD.COLORS.fillTop, HUD.COLORS.fillBottom, HUD.COLORS.fillBottom, 1);
+        this.fill.fillRoundedRect(TRACK_X, BAR_Y + 1, innerW, BAR_HEIGHT - 2, BAR_RADIUS - 2);
 
-        // Glassy highlight along the top edge.
-        this.fill.fillStyle(0xffffff, 0.18);
-        this.fill.fillRoundedRect(BAR_X + 4, BAR_Y + 4, Math.max(0, innerW - 2), (BAR_HEIGHT - 6) * 0.4, BAR_RADIUS - 4);
+        // Slimy highlight along the top edge.
+        this.fill.fillStyle(0xffffff, 0.2);
+        this.fill.fillRoundedRect(TRACK_X + 2, BAR_Y + 3, Math.max(0, innerW - 4), (BAR_HEIGHT - 6) * 0.35, BAR_RADIUS - 4);
     }
 }

@@ -197,11 +197,37 @@ export const IDLE = {
     SNORE_MAX_MS: 40_000,
 } as const;
 
+/**
+ * The Halloween HUD (scenes/HUDScene.ts; the pieces come from tools/build-hud.py). Everything that has a place or a
+ * size on the screen lives here, in logical 1280x720 units — to move or resize the weekly bar, change these numbers.
+ */
 export const HUD = {
-    BAR_X: 32,
-    BAR_Y: 22,
-    BAR_WIDTH: GAME.WIDTH - 64,
-    BAR_HEIGHT: 30,
+    /** The weekly bar spans the screen: from BAR_X to BAR_X + BAR_WIDTH, its pumpkin on the left, its lantern on the right. */
+    BAR_X: 16,
+    BAR_WIDTH: GAME.WIDTH - 32,
+    /** The dark track inside the frame (where the fill grows): its top edge and thickness. */
+    BAR_Y: 59,
+    BAR_HEIGHT: 26,
+    /** How far the track's usable part starts after the bar's left end (the pumpkin covers the rest) and stops before its right end. */
+    TRACK_INSET_LEFT: 162,
+    TRACK_INSET_RIGHT: 71,
+    /** Texture px -> screen px of every HUD picture (they are built at 2x). */
+    PICTURE_SCALE: 0.5,
+    /** Gothic-looking fonts that exist on every machine; replace with a bundled Halloween font when one is chosen. */
+    FONT: 'Georgia, "Times New Roman", serif',
+    COLORS: {
+        fillTop: 0xb6f23a,
+        fillBottom: 0x3f9f10,
+        divider: 0x1a0d2b,
+        text: '#fff1d6',
+        accent: '#ff9a3d',
+        label: '#ffb35c',
+        stroke: '#1a0d2b',
+    },
+    /** The leaderboard's panel (top-left) and the room its rows get inside the picture. */
+    PANEL: { X: 8, Y: 150, WIDTH: 262, ROWS_X: 34, ROWS_Y: 31, ROWS_WIDTH: 146 },
+    /** The victory banner: the big frame, its centre, and the dark fill behind its text. */
+    BANNER: { X: 800, Y: 236, WIDTH: 400 },
 } as const;
 
 /**
