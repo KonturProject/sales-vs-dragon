@@ -4,7 +4,7 @@ Run from game/:  python tools/build-camp.py     Needs Python with Pillow.
 
 The sources are small painted pictures; they are enlarged with a smooth filter to 2x their on-screen size (the game shows
 them at scale 0.5, like the hero textures) and lightly sharpened. TENT_H / TOTEM_H are the on-screen heights in world px
-(the chief is 234, a hero ~195).
+(the chief is 330, a hero ~215).
 """
 import os
 from PIL import Image, ImageFilter

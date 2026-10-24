@@ -1,4 +1,4 @@
-import { BlendModes, Animations, GameObjects, Scene } from 'phaser';
+import { BlendModes, Animations, GameObjects, Scene, Textures } from 'phaser';
 import { HORDE } from '../core/Constants';
 
 const TEXTURE = 'firelight';
@@ -27,6 +27,7 @@ export class Firelight {
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
             tex!.refresh();
+            tex!.setFilter(Textures.FilterMode.LINEAR); // drawn up to ~1.7x its size: NEAREST would show the gradient in blocks
         }
         this.glow = scene.add.image(fire.x, fire.y - F.LIFT, TEXTURE)
             .setBlendMode(BlendModes.ADD)

@@ -112,6 +112,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
     fallOver(dir: 1 | -1): boolean {
         if (this.busy || this.posture !== 'standing') return false;
         this.busy = true;
+        this.setPose(this.defaultTexture); // a breath may have been interrupted on one of its frames
         this.posture = 'down';
         this.lean = dir;
         this.scene.tweens.killTweensOf(this);
@@ -146,6 +147,7 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
     doze(dir: 1 | -1): boolean {
         if (this.busy || this.posture !== 'standing') return false;
         this.busy = true;
+        this.setPose(this.defaultTexture);
         this.posture = 'dozing';
         this.lean = dir;
         this.scene.tweens.killTweensOf(this);
@@ -255,7 +257,10 @@ export class HeroSprite extends GameObjects.Container implements Swayable, Breat
      */
     playHit(delta = 0, strikeFrontX: number = HERO.STRIKE_FRONT_X, onBlow: (index: number, total: number) => void = () => {}) {
         if (this.posture !== 'standing') this.wakeInstant(); // a sale needs this hero right now
-        if (this.busy) return;
+        if (this.busy) {
+            onBlow(0, 1); // already mid-strike: this sale still thuds, hurts the goblin and gets its cheer
+            return;
+        }
         this.busy = true;
         // The idle breath may be mid-way; the chain below takes over the pose, angle and scale.
         this.scene.tweens.killTweensOf(this);

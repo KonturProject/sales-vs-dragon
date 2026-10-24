@@ -25,7 +25,6 @@ const MUTE_X = STATUS_X - 190;
 const MUTE_Y = GAME.HEIGHT - 16;
 
 export class HUDScene extends Scene {
-    private track!: GameObjects.Graphics;
     private fill!: GameObjects.Graphics;
     private label!: GameObjects.Text;
     private headsText!: GameObjects.Text;
@@ -47,7 +46,6 @@ export class HUDScene extends Scene {
     create() {
         fitCameraToGame(this);
 
-        this.track = this.add.graphics().setDepth(0);
         this.drawTrack();
 
         this.fill = this.add.graphics().setDepth(2);
@@ -202,10 +200,6 @@ export class HUDScene extends Scene {
         const right = this.add.image(BAR_X + BAR_WIDTH, cy, 'hud_bar_right').setOrigin(1, 0.5).setScale(k).setDepth(3);
         const mid = this.add.image(BAR_X + left.displayWidth, cy, 'hud_bar_mid').setOrigin(0, 0.5).setDepth(1);
         mid.setDisplaySize(BAR_WIDTH - left.displayWidth - right.displayWidth, mid.height * k);
-        // A dark bed under the fill, in case the frame's own track is lighter than it looked in the picture.
-        this.track.clear();
-        this.track.fillStyle(0x0b0814, 1);
-        this.track.fillRoundedRect(TRACK_X, BAR_Y, TRACK_WIDTH, BAR_HEIGHT, BAR_RADIUS);
     }
 
     private render(payload: ProgressChangedPayload) {
@@ -278,12 +272,13 @@ export class HUDScene extends Scene {
         const frame = this.add.image(0, 0, 'hud_frame_big');
         const k = WIDTH / frame.width;
         frame.setScale(k);
-        // The frame's transparent hole in texture px (tools/build-hud.py prints its insets), and its centre's offset.
-        const holeW = 860 * k;
-        const holeH = 458 * k;
+        // The frame's transparent hole as fractions of the picture (860 x 458 at offset 10, 3 of 1120 x 728 — tools/build-hud.py
+        // prints its insets), so a missing texture's placeholder cannot blow the dark bed up over the whole screen.
+        const holeW = frame.width * k * (860 / 1120);
+        const holeH = frame.height * k * (458 / 728);
         const bed = this.add.graphics();
         bed.fillStyle(0x120a1c, 0.92);
-        bed.fillRoundedRect(10 * k - holeW / 2, 3 * k - holeH / 2, holeW, holeH, 10);
+        bed.fillRoundedRect(frame.width * k * (10 / 1120) - holeW / 2, frame.height * k * (3 / 728) - holeH / 2, holeW, holeH, 10);
         const title = this.add.text(0, -18, 'ОТДЕЛЫ ПОБЕДИЛИ!', {
             fontFamily: GOTHIC,
             fontStyle: 'bold',

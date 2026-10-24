@@ -11,7 +11,7 @@ The layers are composited in the order of the pack's own picture, except that th
 from the middle to the left: the heroes stand in front of it, the goblins on the open road on the right. Every other
 layer spans the whole width, so nothing has to be repeated and the tree appears once.
 
-Output: public/assets/sprites/bg_forest.jpg (about 2462x1385: the pack picture plus mirrored, blurred, darkened margins —
+Output: public/assets/sprites/bg_forest.jpg (about 2667x1500: the pack picture plus mirrored, blurred, darkened margins —
 the stage shows it over the whole zoomed-out view, WORLD in Constants.ts)
 and public/assets/sprites/campfire.png (the frames 4x larger with hard pixels, so smooth filtering keeps them crisp).
 """

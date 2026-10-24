@@ -5,7 +5,7 @@ import { HORDE_DEFS, animKey } from '../objects/Horde';
 import { fitCameraToGame } from '../core/Render';
 
 /** Character, horde and background textures (everything except generated text canvases). */
-const SMOOTH_TEXTURE_KEY = /^(hero_|lead_|goblin|loot_|campfire|bg_forest)/;
+const SMOOTH_TEXTURE_KEY = /^(hero_|lead_|goblin|loot_|campfire|bg_forest|hud_|camp_)/;
 
 /**
  * Loads the real cropped sprites from public/assets/sprites/. Any file that

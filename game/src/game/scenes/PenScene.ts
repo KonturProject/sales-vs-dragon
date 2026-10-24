@@ -100,7 +100,7 @@ export class PenScene extends Scene {
                 this.horde.reactToHit();
                 if (index === 0) this.lead?.playCheer();
             });
-            const bar = hudToWorld(HUD.BAR_X + HUD.BAR_WIDTH / 2, HUD.BAR_Y + HUD.BAR_HEIGHT / 2);
+            const bar = hudToWorld(HUD.BAR_X + HUD.TRACK_INSET_LEFT + (HUD.BAR_WIDTH - HUD.TRACK_INSET_LEFT - HUD.TRACK_INSET_RIGHT) / 2, HUD.BAR_Y + HUD.BAR_HEIGHT / 2);
             emitFloatingAmount(this, hero.x, hero.y - 150, payload.delta, bar.x, bar.y);
         } else {
             // A sale of no mapped department: no hero to run, but the thud and the lead's cheer still land together.

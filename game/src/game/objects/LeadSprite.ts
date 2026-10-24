@@ -73,6 +73,7 @@ export class LeadSprite extends GameObjects.Container implements Swayable, Breat
     /** Held victory pulse until resetPose() (ratio dropped back under 100%). */
     playVictory() {
         this.victoryTween?.stop();
+        this.sprite.setTexture(this.stance); // a breath may have been interrupted on one of its frames
         const s = this.baseScale;
         this.setScale(s);
         this.victoryTween = this.scene.tweens.add({

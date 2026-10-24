@@ -260,7 +260,7 @@ class Goblin implements Breather {
 class Chief implements Breather {
     readonly sprite: GameObjects.Sprite;
     private cryTimer: { remove(): void } | null = null;
-    /** Drawn at HORDE.CHIEF.height — a fifth taller than a hero. */
+    /** Drawn at HORDE.CHIEF.height — half as tall again as a hero. */
     readonly scale: number;
 
     constructor(private scene: Scene, readonly def: CreatureDef) {
