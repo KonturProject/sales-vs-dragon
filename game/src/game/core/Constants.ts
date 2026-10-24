@@ -121,12 +121,12 @@ export const HERO = {
      * PenScene sorts depth by `y` so the front row draws over the back row.
      */
     SLOTS: [
-        { x: 150, y: 545, scale: 1.09 },
-        { x: 270, y: 592, scale: 1.13 },
-        { x: 405, y: 520, scale: 1.04 },
-        { x: 510, y: 585, scale: 1.13 },
-        { x: 655, y: 540, scale: 1.08 },
-        { x: 775, y: 598, scale: 1.13 },
+        { x: 125, y: 545, scale: 1.09 },
+        { x: 228, y: 592, scale: 1.13 },
+        { x: 335, y: 520, scale: 1.04 },
+        { x: 430, y: 585, scale: 1.13 },
+        { x: 540, y: 540, scale: 1.08 },
+        { x: 640, y: 598, scale: 1.13 },
     ],
     /** All hero textures are 2x their on-screen size (see tools/build-sprites.py). */
     TEXTURE_SCALE: 0.5,
