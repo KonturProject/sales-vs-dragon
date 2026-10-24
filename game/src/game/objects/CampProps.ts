@@ -1,12 +1,15 @@
 import { Scene } from 'phaser';
 import { HORDE } from '../core/Constants';
 
-/** The still furniture of the goblin camp: a hide tent behind the campfire and a bone totem at the camp's near edge (HORDE.TENT / TOTEM). */
+/**
+ * The still furniture of the goblin camp: two hide tents behind and beside the horde and a bone totem at the camp's
+ * near edge (HORDE.TENTS / TOTEM). All face left, toward the heroes — the pictures look right, so they are mirrored.
+ */
 export class CampProps {
     constructor(scene: Scene) {
-        for (const [key, at] of [['camp_tent', HORDE.TENT], ['camp_totem', HORDE.TOTEM]] as const) {
-            // The tent's door looks right in the picture; the camp is entered from the heroes' side, on the left.
-            scene.add.image(at.x, at.y, key).setOrigin(0.5, 1).setScale(0.5).setDepth(at.y).setFlipX(key === 'camp_tent');
-        }
+        const place = (key: string, at: { x: number; y: number }) =>
+            scene.add.image(at.x, at.y, key).setOrigin(0.5, 1).setScale(0.5).setDepth(at.y).setFlipX(true);
+        HORDE.TENTS.forEach(at => place('camp_tent', at));
+        place('camp_totem', HORDE.TOTEM);
     }
 }

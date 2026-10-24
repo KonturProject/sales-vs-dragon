@@ -97,10 +97,10 @@ export const HORDE = {
      * The goblins' campfire (feet = the bottom of the logs). Its five frames loop at FPS — below the idle frame rate
      * (core/PowerSaver.ts), so it costs the laptops nothing extra. Frame size of the 4x texture.
      */
-    CAMPFIRE: { x: 1215, y: 550, scale: 0.36, FPS: 8, FRAME: 256 },
-    /** Tent and totem of the camp (feet = bottom of the picture); textures are 2x their on-screen size. */
-    TENT: { x: 1425, y: 470 },
-    TOTEM: { x: 1100, y: 450 },
+    CAMPFIRE: { x: 1092, y: 550, scale: 0.36, FPS: 8, FRAME: 256 },
+    /** Two tents and the totem of the camp (feet = bottom of the picture); textures are 2x their on-screen size. */
+    TENTS: [{ x: 1425, y: 470 }, { x: 1385, y: 575 }],
+    TOTEM: { x: 860, y: 495 },
     /** The hero's leading edge stops this far in front of the target's front edge. */
     STRIKE_GAP: 6,
     /** After the chief sits down he cries for this long, then keeps a still, tearful pose (no endless animation). */
