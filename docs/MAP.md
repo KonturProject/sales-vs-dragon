@@ -1,14 +1,16 @@
 # Карта проекта
 
-Справочник по структуре репозитория. Концепция и механика — [gameplan.md](./gameplan.md) и [horde-track.md](./horde-track.md) (прежний дракон — [dragon-track.md](./dragon-track.md)), технические решения — [tech.md](./tech.md).
+Подробное дерево репозитория. **Быстрый вход — [NAVIGATOR.md](./NAVIGATOR.md)** (кто за что отвечает и кто что использует). Концепция и механика — [gameplan.md](./gameplan.md) и [horde-track.md](./horde-track.md) (прежний дракон — [dragon-track.md](./dragon-track.md)), технические решения — [tech.md](./tech.md).
 
 ## Верхний уровень
 
 ```
-claude first pr/                        <- корень (git-репозиторий, задеплоен на GitHub: KonturProject/sales-vs-dragon)
+sales vs dragon/                        <- корень (git-репозиторий, GitHub: KonturProject/sales-vs-dragon)
 ├── CLAUDE.md                            инструкции для Claude Code (команды, архитектура, гочи) — читается автоматически
 ├── ROP.jpg                              исходный референс-арт первой версии (в игре не используется)
+├── heroes/                              рабочая папка пользователя с артом героев — в .gitignore, не коммитить
 ├── docs/                                вся документация проекта
+│   ├── NAVIGATOR.md                     НАВИГАТОР: куда идти за чем, кто что использует — читать первым
 │   ├── gameplan.md                      концепция, ростер, статус
 │   ├── horde-track.md                   трек «Орда» (текущий): гоблины, вождь, сокровища, лесной фон — правила, ассеты, пайплайн
 │   ├── dragon-track.md                  трек «Дракон» (история, до 2026-10-22): правила механики, инвентаризация ассетов
@@ -38,7 +40,7 @@ game/
 │   ├── assets/
 │   │   ├── sprites/                     ВСЕ спрайты игры — результат tools/build-*.py, см. таблицу ниже (horde/ — орда и сокровища)
 │   │   ├── mock/mock-status.json        фикстура для офлайн-разработки (useMock: true), коды отделов СР1/2/3/5/6/9
-│   │   └── bg.png, logo.png             неиспользуемые остатки шаблона phaserjs/template-vite-ts
+│   │   └── bg.png, logo.png             неиспользуемые остатки шаблона phaserjs/template-vite-ts (так же `game/README.md`, `game/LICENSE`, `game/screenshot.png`; `game/log.js` — аналитика шаблона, в `*-nolog` скриптах не нужна)
 │   └── style.css, favicon.png
 ├── src/
 │   ├── main.ts                          bootstrap игры + dev-хук window.__debug (только import.meta.env.DEV)
@@ -117,13 +119,14 @@ game/
 ## Статус деплоя игры
 
 - Локальная разработка: `npm run dev` (или `dev-nolog`) из `game/`, либо `.claude/launch.json` → preview "sales-game-dev" (порт 8080).
-- **Задеплоено на GitHub Pages** (репозиторий https://github.com/KonturProject/sales-vs-dragon, публичный). Игра: https://konturproject.github.io/sales-vs-dragon/. Админка: https://konturproject.github.io/sales-vs-dragon/admin.html. **Опубликована версия с драконом** (деплой 2026-09-20, коммит `aba4f65`).
+- **Задеплоено на GitHub Pages** (репозиторий https://github.com/KonturProject/sales-vs-dragon, публичный). Игра: https://konturproject.github.io/sales-vs-dragon/. Админка: https://konturproject.github.io/sales-vs-dragon/admin.html. **Опубликована версия с драконом** (деплой 2026-09-20, коммит `aba4f65`). Орда (локальные коммиты `93f9618`, `326f777` и позже) на сайт **ещё не выкатывалась** — деплой и пуш только по явному «да» пользователя.
 - `game/package.json` → `npm run deploy` = `npm run build-nolog && gh-pages -d dist` (пакет `gh-pages` в devDependencies). Vite `base: './'` — пути в собранном HTML относительные, под-путь Pages не требует настройки.
 - GitHub Pages включился автоматически при первом пуше в ветку `gh-pages` (source: `gh-pages` branch, path `/`) — проверять через `gh api repos/KonturProject/sales-vs-dragon/pages`.
 - Авторизация: `gh auth status` под аккаунтом `KonturProject` (GitHub CLI установлен через winget).
-- Корневой `.gitignore` исключает `node_modules`, `dist`, `.claude/`, `.agents/`, `skills-lock.json`.
+- Корневой `.gitignore` исключает `node_modules`, `dist`, `.claude/`, `.agents/`, `skills-lock.json`, `heroes/`; `game/.gitignore` — `*.psd` в `assets-source`.
 
 ## Что дальше
 
+0. Выкатить орду на сайт (по «да» пользователя): `cd game && npm run deploy`.
 1. Подтвердить точный формат кода отдела в самой таблице (регистр/пробелы у «СР1» и т.д.) — если удар не анимируется, смотреть сюда первым делом.
-2. Дополнительные позы удара для Скруджа и реакции Круэллы (если появится арт).
+2. Реакции Круэллы (арт одна поза — только код-анимации); Метателю дорисовать ранение/смерть (в паке нет), лист ходьбы Шамана (`walk_1`) не используется.

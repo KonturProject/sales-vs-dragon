@@ -1,5 +1,7 @@
 # Tech
 
+Навигация по файлам — [NAVIGATOR.md](./NAVIGATOR.md). Разделы про дракона (рык, головы, гора золота, пещера) — историческая основа; для орды — раздел «Орда вместо дракона» и [horde-track.md](./horde-track.md).
+
 ## Стек
 - **Фронтенд**: Phaser 4 + Vite + TypeScript, скаффолд `phaserjs/template-vite-ts`. Деплой — статика на GitHub Pages через `npm run deploy` (пакет `gh-pages`, публикует `dist/` в ветку `gh-pages`), см. `docs/MAP.md`. Vite `base: './'` даёт относительные пути в собранном HTML, под-путь Pages (`/sales-vs-dragon/`) не требует настройки.
 - **Бэкенд**: Google Apps Script Web App, привязанный к приватной Google-таблице. Бесплатно, без отдельного хостинга/сервисного ключа. Поля `totalMeters`/`metersRemaining` в его ответе остались с прежней концепции — фронтенд их игнорирует (в `StatusResponse` они опциональные).

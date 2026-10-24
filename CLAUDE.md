@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Отделы против орды" (repo `KonturProject/sales-vs-dragon`, renamed from `svin-i-zagon` on 2026-09-20; until 2026-10-22 the game was "Отделы против дракона") — a Phaser 4 + Vite + TypeScript browser game that visualizes a sales department's weekly plan on an office display. Six department mascots (Halloween versions) strike a goblin horde camped in a forest — five goblins guarding treasure, their chief behind them — whenever real sales land in a private Google Sheet; each of the 5 equal daily plans crossed (20/40/60/80/100 % of the weekly plan) defeats one goblin, whose treasure flies to the feet of the branch lead (Cruella), and at 100 % the chief sits down and cries and a victory banner appears. Cruella, not tied to a department, cheers on every sale. A separate PIN-gated admin page manages the game: weekly plan, reading and appending to the sales sheet, triggering animations on the displays, changing the PIN. Live at https://konturproject.github.io/sales-vs-dragon/ (admin: `/admin.html`); note the deployed site lags the code until `npm run deploy` is run.
 
+**Start with `docs/NAVIGATOR.md`** — a lookup table of which file does what, who uses it, and where to go for a given task; use it instead of searching the repo. Keep it updated whenever files are added, moved or change role.
+
 Full project narrative, mechanics rules and rationale for every design decision live in `docs/` — read these before making non-trivial changes, they are kept current:
+- `docs/NAVIGATOR.md` — file-by-file map, data/event flow, task → file lookup, gotchas (read first)
 - `docs/gameplan.md` — concept, department→hero mapping, status checklist (done/open gaps)
 - `docs/horde-track.md` — the current goblin-horde concept: exact rules, treasure, the forest scene, assets, pipeline, findings
 - `docs/dragon-track.md` — the previous dragon concept (history; the data mechanics are unchanged)
