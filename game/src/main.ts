@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (import.meta.env.DEV) {
         // Manual test hook: from the devtools console, e.g.
-        //   __debug.hit('hero_blue', 50000)
+        //   __debug.hit('hero_lion', 50000)
         // fires a money:in event without waiting on a real poll cycle.
         (window as any).__debug = {
             EventBus,
