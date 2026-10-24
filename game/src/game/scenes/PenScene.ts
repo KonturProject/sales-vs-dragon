@@ -8,6 +8,7 @@ import { DRAGON, HERO, HUD, WORLD } from '../core/Constants';
 import { RosterConfig, HeroDef } from '../systems/RosterConfig';
 import { DataPollingService } from '../systems/DataPollingService';
 import { Horde } from '../objects/Horde';
+import { CampProps } from '../objects/CampProps';
 import { HeroSprite } from '../objects/HeroSprite';
 import { LeadSprite } from '../objects/LeadSprite';
 import { IdleMood } from '../systems/IdleMood';
@@ -41,6 +42,7 @@ export class PenScene extends Scene {
         // Forest with the face-tree behind the heroes (tools/build-background.py), covering the whole zoomed-out view.
         this.add.image(WORLD.X0 + WORLD.W / 2, WORLD.Y0 + WORLD.H / 2, 'bg_forest').setDisplaySize(WORLD.W, WORLD.H).setDepth(-10);
 
+        new CampProps(this);
         this.horde = new Horde(this);
 
         // Depth follows the feet's y so the front row draws over the back row.

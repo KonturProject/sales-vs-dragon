@@ -29,6 +29,9 @@ export class Preloader extends Scene {
         // Forest and campfire: tools/build-background.py.
         this.load.image('bg_forest', 'bg_forest.jpg');
         this.load.spritesheet('campfire', 'campfire.png', { frameWidth: HORDE.CAMPFIRE.FRAME, frameHeight: HORDE.CAMPFIRE.FRAME });
+        // Tent and totem of the goblin camp (tools/build-camp.py).
+        this.load.image('camp_tent', 'camp_tent.png');
+        this.load.image('camp_totem', 'camp_totem.png');
         // The horde (tools/build-horde.py): every animation a spritesheet of equal frames, sizes from config/horde.json.
         for (const def of [...HORDE_DEFS.goblins, HORDE_DEFS.chief]) {
             for (const anim of Object.keys(def.anims)) {
@@ -113,7 +116,7 @@ export class Preloader extends Scene {
             g.fillGradientStyle(0x0d1a12, 0x0d1a12, 0x34452a, 0x34452a, 1);
             g.fillRect(0, 0, WORLD.W, WORLD.H);
             g.generateTexture('bg_forest', WORLD.W, WORLD.H);
-        } else if (key.startsWith('goblin') || key.startsWith('loot_') || key === 'campfire') {
+        } else if (key.startsWith('goblin') || key.startsWith('loot_') || key.startsWith('camp')) {
             g.fillStyle(key.startsWith('goblin') ? 0x5d8a2c : 0xc9a227, 1);
             g.fillRoundedRect(0, 0, 120, 160, 18);
             g.generateTexture(key, 120, 160);

@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+"""Builds the goblins' camp props (tent, totem) from assets-source/camp/ into public/assets/sprites/.
+Run from game/:  python tools/build-camp.py     Needs Python with Pillow.
+
+The sources are small painted pictures; they are enlarged with a smooth filter to 2x their on-screen size (the game shows
+them at scale 0.5, like the hero textures) and lightly sharpened. TENT_H / TOTEM_H are the on-screen heights in world px
+(the chief is 234, a hero ~195).
+"""
+import os
+from PIL import Image, ImageFilter
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SRC = os.path.join(ROOT, 'assets-source', 'camp')
+OUT = os.path.join(ROOT, 'public', 'assets', 'sprites')
+
+PROPS = [
+    ('dino_tribe_camp_hide_tent_hut_01.png', 'camp_tent.png', 140),
+    ('dino_tribe_camp_bone_skull_totem_01.png', 'camp_totem.png', 170),
+]
+TEXTURE_SCALE = 2  # texture px per on-screen px
+
+
+def main():
+    for src, out, screen_h in PROPS:
+        im = Image.open(os.path.join(SRC, src)).convert('RGBA')
+        h = screen_h * TEXTURE_SCALE
+        w = round(im.width * h / im.height)
+        im = im.resize((w, h), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=1.2, percent=60, threshold=2))
+        im.save(os.path.join(OUT, out), optimize=True)
+        print(out, im.size)
+
+
+if __name__ == '__main__':
+    main()

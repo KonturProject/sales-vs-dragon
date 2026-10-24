@@ -70,13 +70,16 @@ class Goblin {
     readonly sprite: GameObjects.Sprite;
     alive = true;
     private readonly home: { x: number; y: number };
+    /** Every goblin is drawn the same height (HORDE.GOBLIN_HEIGHT), whatever its sheet's size. */
+    readonly scale: number;
     /** The big piece first, then the small ones. */
     private loot: LootPiece[] = [];
 
     constructor(private scene: Scene, readonly def: CreatureDef, readonly index: number) {
+        this.scale = HORDE.GOBLIN_HEIGHT / def.topPx;
         this.home = HORDE.GOBLINS[index];
         this.sprite = scene.add.sprite(this.home.x, this.home.y, animKey(def, 'idle'), 0)
-            .setOrigin(def.originX, def.originY).setScale(HORDE.GOBLIN_SCALE).setDepth(this.home.y);
+            .setOrigin(def.originX, def.originY).setScale(this.scale).setDepth(this.home.y);
         this.rollLoot();
     }
 
@@ -100,11 +103,11 @@ class Goblin {
 
     /** Where a hero's leading edge stops when it hits this goblin. */
     frontX() {
-        return this.home.x - this.def.frontPx * HORDE.GOBLIN_SCALE - HORDE.STRIKE_GAP;
+        return this.home.x - this.def.frontPx * this.scale - HORDE.STRIKE_GAP;
     }
 
     chestY() {
-        return this.home.y - this.def.topPx * HORDE.GOBLIN_SCALE * 0.55;
+        return this.home.y - this.def.topPx * this.scale * 0.55;
     }
 
     /** At the goblin's feet, in front of it. */
@@ -131,7 +134,7 @@ class Goblin {
         this.scene.tweens.killTweensOf(this.sprite);
         this.loot.forEach(p => this.scene.tweens.killTweensOf(p.image));
         this.sprite.setTexture(animKey(this.def, 'idle'), 0).clearTint()
-            .setPosition(this.home.x, this.home.y).setAngle(0).setScale(HORDE.GOBLIN_SCALE);
+            .setPosition(this.home.x, this.home.y).setAngle(0).setScale(this.scale);
     }
 
     /** Standing with its treasure. `animate` (a new week brings the goblins back): a fresh random treasure, faded in. */
@@ -228,18 +231,21 @@ class Goblin {
 class Chief {
     readonly sprite: GameObjects.Sprite;
     private cryTimer: { remove(): void } | null = null;
+    /** Drawn at HORDE.CHIEF.height — a fifth taller than a hero. */
+    readonly scale: number;
 
     constructor(private scene: Scene, readonly def: CreatureDef) {
         const c = HORDE.CHIEF;
-        this.sprite = scene.add.sprite(c.x, c.y, animKey(def, 'idle'), 0).setOrigin(def.originX, def.originY).setScale(c.scale).setDepth(c.y);
+        this.scale = c.height / def.topPx;
+        this.sprite = scene.add.sprite(c.x, c.y, animKey(def, 'idle'), 0).setOrigin(def.originX, def.originY).setScale(this.scale).setDepth(c.y);
     }
 
     frontX() {
-        return HORDE.CHIEF.x - this.def.frontPx * HORDE.CHIEF.scale - HORDE.STRIKE_GAP;
+        return HORDE.CHIEF.x - this.def.frontPx * this.scale - HORDE.STRIKE_GAP;
     }
 
     chestY() {
-        return HORDE.CHIEF.y - this.def.topPx * HORDE.CHIEF.scale * 0.55;
+        return HORDE.CHIEF.y - this.def.topPx * this.scale * 0.55;
     }
 
     reset() {
@@ -247,7 +253,7 @@ class Chief {
         this.cryTimer?.remove();
         this.cryTimer = null;
         const c = HORDE.CHIEF;
-        this.sprite.setTexture(animKey(this.def, 'idle'), 0).clearTint().setPosition(c.x, c.y).setAngle(0).setScale(c.scale);
+        this.sprite.setTexture(animKey(this.def, 'idle'), 0).clearTint().setPosition(c.x, c.y).setAngle(0).setScale(this.scale);
     }
 
     hurt() {
@@ -294,13 +300,13 @@ class Chief {
         };
         if (!playFrames(this.sprite, this.def, 'hurt', 380, plop)) plop();
         if (!sits) {
-            this.scene.tweens.add({ targets: this.sprite, y: c.y + this.def.topPx * c.scale * 0.2, scaleY: c.scale * 0.8, delay: 380, duration: 520, ease: 'Bounce.easeOut' });
+            this.scene.tweens.add({ targets: this.sprite, y: c.y + this.def.topPx * this.scale * 0.2, scaleY: this.scale * 0.8, delay: 380, duration: 520, ease: 'Bounce.easeOut' });
         }
     }
 
     /** Where the tears start in sitting frame `frame`, on screen. */
     private eyes(frame: number) {
-        const s = HORDE.CHIEF.scale;
+        const s = this.scale;
         return (this.def.sitEyes?.[frame] ?? []).map(([dx, dy]) => ({ x: this.sprite.x + dx * s, y: this.sprite.y - dy * s }));
     }
 
@@ -330,7 +336,7 @@ class Chief {
                     });
                 }
                 // A sob on every frame change: a little shudder of the shoulders.
-                if (left % 2 === 0) this.scene.tweens.add({ targets: this.sprite, scaleY: HORDE.CHIEF.scale * 1.03, duration: 120, yoyo: true });
+                if (left % 2 === 0) this.scene.tweens.add({ targets: this.sprite, scaleY: this.scale * 1.03, duration: 120, yoyo: true });
             },
         });
     }

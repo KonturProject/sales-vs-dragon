@@ -55,16 +55,21 @@ export const DRAGON = {
  * chief sits down and cries. Static between events — no idle animation (the office laptops stay at the idle frame rate).
  */
 export const HORDE = {
+    /**
+     * Feet of the five goblins, in the order they fall (front first, nearest the heroes): a half-ring on the heroes'
+     * side of the campfire (CAMPFIRE), the back ones higher up (perspective). The chief stands behind the fire.
+     */
     GOBLINS: [
-        { x: 868, y: 578 },
-        { x: 952, y: 530 },
-        { x: 1036, y: 584 },
-        { x: 1120, y: 534 },
-        { x: 1202, y: 590 },
+        { x: 900, y: 545 },
+        { x: 970, y: 585 },
+        { x: 970, y: 505 },
+        { x: 1148, y: 600 },
+        { x: 1148, y: 484 },
     ],
-    /** Texture px -> screen px. The hsdsz goblins are ~150 px figures in their sheets. */
-    GOBLIN_SCALE: 0.85,
-    CHIEF: { x: 1105, y: 482, scale: 1.25 },
+    /** On-screen height of every goblin, whatever its sheet's frame size (scale = height / the sheet's `topPx`), world px. A hero is ~195. */
+    GOBLIN_HEIGHT: 190,
+    /** The chief is a fifth taller than a hero. */
+    CHIEF: { x: 1292, y: 478, height: 234 },
     /**
      * Each goblin's treasure, picked at random (again every new week): one big piece and up to SMALL_MAX small ones
      * at its feet, in front of it (behind it the goblins standing in front would hide it). Offsets from the goblin's
@@ -81,18 +86,21 @@ export const HORDE = {
     },
     /** The pile of won treasure at Cruella's feet: where each goblin's big piece lands, in the order they fall. */
     LOOT: [
-        { x: 172, y: 566 },
-        { x: 116, y: 580 },
-        { x: 220, y: 588 },
-        { x: 62, y: 570 },
-        { x: 162, y: 598 },
+        { x: 44, y: 566 },
+        { x: -12, y: 580 },
+        { x: 92, y: 588 },
+        { x: -66, y: 570 },
+        { x: 34, y: 598 },
     ],
     LOOT_FLIGHT_MS: 950,
     /**
      * The goblins' campfire (feet = the bottom of the logs). Its five frames loop at FPS — below the idle frame rate
      * (core/PowerSaver.ts), so it costs the laptops nothing extra. Frame size of the 4x texture.
      */
-    CAMPFIRE: { x: 1236, y: 470, scale: 0.36, FPS: 8, FRAME: 256 },
+    CAMPFIRE: { x: 1200, y: 550, scale: 0.36, FPS: 8, FRAME: 256 },
+    /** Tent and totem of the camp (feet = bottom of the picture); textures are 2x their on-screen size. */
+    TENT: { x: 1380, y: 572 },
+    TOTEM: { x: 1075, y: 450 },
     /** The hero's leading edge stops this far in front of the target's front edge. */
     STRIKE_GAP: 6,
     /** After the chief sits down he cries for this long, then keeps a still, tearful pose (no endless animation). */
@@ -111,12 +119,12 @@ export const HERO = {
      * PenScene sorts depth by `y` so the front row draws over the back row.
      */
     SLOTS: [
-        { x: 240, y: 508, scale: 0.92 },
-        { x: 338, y: 578, scale: 1 },
-        { x: 436, y: 508, scale: 0.92 },
-        { x: 534, y: 578, scale: 1 },
-        { x: 632, y: 508, scale: 0.92 },
-        { x: 730, y: 578, scale: 1 },
+        { x: 140, y: 545, scale: 0.97 },
+        { x: 240, y: 592, scale: 1 },
+        { x: 360, y: 520, scale: 0.93 },
+        { x: 455, y: 585, scale: 1 },
+        { x: 590, y: 540, scale: 0.96 },
+        { x: 700, y: 598, scale: 1 },
     ],
     /** All hero textures are 2x their on-screen size (see tools/build-sprites.py). */
     TEXTURE_SCALE: 0.5,
@@ -130,11 +138,11 @@ export const HERO = {
      * Fallback for where a hero's leading edge (weapon/fist/fire) stops. Normally the horde says it
      * (Horde.strikeFrontX: the front of the nearest goblin still standing, then of the chief).
      */
-    STRIKE_FRONT_X: 790,
+    STRIKE_FRONT_X: 830,
     /** How far the hero steps back in the wind-up, px. */
     WINDUP_BACK: 24,
     /** Branch lead (Cruella) stands apart from the department heroes, far left. Her train makes her sprite wide, hence the smaller scale. */
-    LEAD: { x: 118, y: 540, scale: 0.85 },
+    LEAD: { x: -20, y: 540, scale: 0.85 },
 } as const;
 
 /**
