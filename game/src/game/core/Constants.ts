@@ -216,28 +216,32 @@ export const HUD = {
     BAR_X: 16,
     BAR_WIDTH: GAME.WIDTH - 32,
     /** The dark track inside the frame (where the fill grows): its top edge and thickness. */
-    BAR_Y: 59,
-    BAR_HEIGHT: 26,
+    BAR_Y: 61,
+    BAR_HEIGHT: 22,
     /** How far the track's usable part starts after the bar's left end (the pumpkin covers the rest) and stops before its right end. */
-    TRACK_INSET_LEFT: 162,
-    TRACK_INSET_RIGHT: 71,
+    TRACK_INSET_LEFT: 105,
+    TRACK_INSET_RIGHT: 50,
     /** Texture px -> screen px of every HUD picture (they are built at 2x). */
     PICTURE_SCALE: 0.5,
     /** Gothic-looking fonts that exist on every machine; replace with a bundled Halloween font when one is chosen. */
     FONT: 'Georgia, "Times New Roman", serif',
     COLORS: {
-        fillTop: 0xb6f23a,
-        fillBottom: 0x3f9f10,
+        /** The fill: a dark acid-green base, a lighter upper half and a pale highlight line (flat shapes, no gradient seam). */
+        fillBase: 0x4fae14,
+        fillUpper: 0x8ee52c,
+        fillShine: 0xd9ff8a,
+        /** The day marks: a groove inside the track (dark edge + the frame's own purple) and an orange rivet on the lower rail. */
         divider: 0x1a0d2b,
-        /** The bright core of the day dividers on the weekly bar. */
-        dividerLight: 0xfff1d6,
+        dividerLight: 0x9149ca,
+        rivet: 0xff7a1a,
+        labelPlate: 0x1a0d2b,
         text: '#fff1d6',
         accent: '#ff9a3d',
         label: '#ffb35c',
         stroke: '#1a0d2b',
     },
     /** The leaderboard's panel (top-left, stretched sideways to WIDTH x HEIGHT) and the room its rows get inside the picture. */
-    PANEL: { X: 8, Y: 110, WIDTH: 340, HEIGHT: 190, ROWS_X: 56, ROWS_Y: 35, ROWS_WIDTH: 205 },
+    PANEL: { X: 8, Y: 124, WIDTH: 340, HEIGHT: 190, ROWS_X: 56, ROWS_Y: 35, ROWS_WIDTH: 205 },
     /** The victory banner: the big frame, its centre, and the dark fill behind its text. */
     BANNER: { X: 800, Y: 236, WIDTH: 400 },
 } as const;

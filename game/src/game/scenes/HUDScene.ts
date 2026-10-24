@@ -12,7 +12,7 @@ const BAR_X = HUD.BAR_X;
 const BAR_Y = HUD.BAR_Y;
 const BAR_WIDTH = HUD.BAR_WIDTH;
 const BAR_HEIGHT = HUD.BAR_HEIGHT;
-const BAR_RADIUS = 8;
+const BAR_RADIUS = 10; // the rounded inner ends of the frame's track
 /** The part of the dark track the fill (and the day dividers) use: right of the pumpkin, left of the lantern. */
 const TRACK_X = BAR_X + HUD.TRACK_INSET_LEFT;
 const TRACK_WIDTH = BAR_WIDTH - HUD.TRACK_INSET_LEFT - HUD.TRACK_INSET_RIGHT;
@@ -27,6 +27,7 @@ const MUTE_Y = GAME.HEIGHT - 16;
 export class HUDScene extends Scene {
     private fill!: GameObjects.Graphics;
     private label!: GameObjects.Text;
+    private labelPlate!: GameObjects.Graphics;
     private headsText!: GameObjects.Text;
     private banner: GameObjects.Container | null = null;
     private statusDot!: GameObjects.Arc;
@@ -48,7 +49,9 @@ export class HUDScene extends Scene {
 
         this.drawTrack();
 
-        this.fill = this.add.graphics().setDepth(2);
+        // Above the frame's end caps (depth 3) on purpose: the caps' own track is opaque, and the fill has to start right
+        // where the track starts (next to the pumpkin) and end right at the lantern's end, not at the seam between the pieces.
+        this.fill = this.add.graphics().setDepth(3.5);
         this.drawDayMarks();
 
         this.headsText = this.add.text(GAME.WIDTH - 32, BAR_Y + BAR_HEIGHT + 52, '', {
@@ -63,10 +66,11 @@ export class HUDScene extends Scene {
         this.label = this.add.text(TRACK_X + TRACK_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, '', {
             fontFamily: GOTHIC,
             fontStyle: 'bold',
-            fontSize: '17px',
+            fontSize: '14px',
             resolution: GAME.RENDER_SCALE,
             color: HUD.COLORS.text,
-        }).setOrigin(0.5).setStroke(HUD.COLORS.stroke, 4).setDepth(4);
+        }).setOrigin(0.5).setStroke(HUD.COLORS.stroke, 3).setDepth(4);
+        this.labelPlate = this.add.graphics().setDepth(3.8);
 
         this.statusText = this.add.text(STATUS_X - 12, STATUS_Y, '', {
             fontFamily: 'Arial, sans-serif',
@@ -141,8 +145,8 @@ export class HUDScene extends Scene {
                 this.renderHeads(payload.heads);
                 emitConfettiBurst(this, 30);
                 const pulse = this.add.rectangle(
-                    BAR_X + BAR_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, BAR_WIDTH, BAR_HEIGHT, 0xffffff, 0
-                );
+                    TRACK_X + TRACK_WIDTH / 2, BAR_Y + BAR_HEIGHT / 2, TRACK_WIDTH, BAR_HEIGHT, 0xffffff, 0
+                ).setDepth(3.6);
                 this.tweens.add({
                     targets: pulse,
                     alpha: 0.5,
@@ -247,29 +251,33 @@ export class HUDScene extends Scene {
     }
 
     /**
-     * Day dividers on the weekly bar — each segment is a daily plan (weekly plan / DAYS). A bright line with a dark edge
-     * (readable on the green fill and on the dark track alike) cuts the bar between the days and sticks out below it as a
-     * tick; each «день N» sits centred under its own segment, between two ticks.
+     * Day marks on the weekly bar — each segment is a daily plan (weekly plan / DAYS). Everything stays inside the frame: a
+     * groove cut into the dark track (a dark edge plus the frame's own purple, readable on the green fill and on the dark
+     * track) and a small orange rivet on the lower rail, like the frame's own ornaments. Each «день N» sits centred under
+     * its own segment.
      */
     private drawDayMarks() {
         const g = this.add.graphics();
-        g.setDepth(2);
-        const top = BAR_Y - 1;
-        const bottom = BAR_Y + BAR_HEIGHT + 1;
-        const tickEnd = BAR_Y + BAR_HEIGHT + 14;
+        g.setDepth(3.5);
+        const grooveTop = BAR_Y + 2;
+        const grooveBottom = BAR_Y + BAR_HEIGHT - 2;
+        const railY = BAR_Y + BAR_HEIGHT + 6; // the lower rail's middle
         for (let d = 1; d < DAYS; d++) {
-            const x = TRACK_X + (TRACK_WIDTH * d) / DAYS;
-            g.lineStyle(5, HUD.COLORS.divider, 0.75).lineBetween(x, top, x, bottom);
-            g.lineStyle(2, HUD.COLORS.dividerLight, 0.95).lineBetween(x, top, x, bottom);
-            g.lineStyle(4, HUD.COLORS.divider, 0.6).lineBetween(x, bottom, x, tickEnd);
-            g.lineStyle(2, HUD.COLORS.dividerLight, 0.9).lineBetween(x, bottom, x, tickEnd);
+            const x = Math.round(TRACK_X + (TRACK_WIDTH * d) / DAYS);
+            g.lineStyle(2, HUD.COLORS.divider, 0.6).lineBetween(x, grooveTop, x, grooveBottom);
+            g.lineStyle(1, HUD.COLORS.dividerLight, 0.9).lineBetween(x + 1.5, grooveTop, x + 1.5, grooveBottom);
+            // a diamond: two triangles
+            g.fillStyle(HUD.COLORS.rivet, 1);
+            g.fillTriangle(x, railY - 3.5, x + 3, railY, x - 3, railY).fillTriangle(x - 3, railY, x + 3, railY, x, railY + 3.5);
+            g.lineStyle(1, HUD.COLORS.divider, 0.9);
+            g.strokeTriangle(x, railY - 3.5, x + 3, railY, x - 3, railY).strokeTriangle(x - 3, railY, x + 3, railY, x, railY + 3.5);
         }
         for (let d = 1; d <= DAYS; d++) {
             const centre = TRACK_X + (TRACK_WIDTH * (d - 0.5)) / DAYS;
             this.add.text(centre, BAR_Y + BAR_HEIGHT + 20, `день ${d}`, {
                 fontFamily: GOTHIC,
                 fontStyle: 'italic',
-                fontSize: '13px',
+                fontSize: '12px',
                 resolution: GAME.RENDER_SCALE,
                 color: HUD.COLORS.label,
             }).setOrigin(0.5, 0).setStroke(HUD.COLORS.stroke, 3).setDepth(4);
@@ -322,6 +330,12 @@ export class HUDScene extends Scene {
         this.label.setText(
             `${Math.round(this.displayedTotal).toLocaleString('ru-RU')} / ${Math.round(this.displayedPlan).toLocaleString('ru-RU')} ₽`
         );
+        // A dark plate behind the sum, so the groove of a day mark never runs through the digits; it stays inside one day's segment.
+        const width = this.label.width + 16;
+        const cx = TRACK_X + TRACK_WIDTH / 2;
+        this.labelPlate.clear();
+        this.labelPlate.fillStyle(HUD.COLORS.labelPlate, 0.85).fillRoundedRect(cx - width / 2, BAR_Y + 1, width, BAR_HEIGHT - 2, (BAR_HEIGHT - 2) / 2);
+        this.labelPlate.lineStyle(1, HUD.COLORS.dividerLight, 0.8).strokeRoundedRect(cx - width / 2, BAR_Y + 1, width, BAR_HEIGHT - 2, (BAR_HEIGHT - 2) / 2);
     }
 
     private drawFill(ratio: number) {
@@ -329,11 +343,13 @@ export class HUDScene extends Scene {
         const innerW = TRACK_WIDTH * ratio;
         if (innerW <= 1) return;
 
-        this.fill.fillGradientStyle(HUD.COLORS.fillTop, HUD.COLORS.fillTop, HUD.COLORS.fillBottom, HUD.COLORS.fillBottom, 1);
-        this.fill.fillRoundedRect(TRACK_X, BAR_Y + 1, innerW, BAR_HEIGHT - 2, BAR_RADIUS - 2);
-
-        // Slimy highlight along the top edge.
-        this.fill.fillStyle(0xffffff, 0.2);
-        this.fill.fillRoundedRect(TRACK_X + 2, BAR_Y + 3, Math.max(0, innerW - 4), (BAR_HEIGHT - 6) * 0.35, BAR_RADIUS - 4);
+        // Flat shapes, not a gradient: Phaser splits a gradient rounded rect into triangles and a lighter diagonal shows.
+        const radius = Math.min(BAR_RADIUS, innerW / 2);
+        this.fill.fillStyle(HUD.COLORS.fillBase, 1).fillRoundedRect(TRACK_X, BAR_Y, innerW, BAR_HEIGHT, radius);
+        this.fill.fillStyle(HUD.COLORS.fillUpper, 1).fillRoundedRect(TRACK_X, BAR_Y, innerW, BAR_HEIGHT * 0.68, { tl: radius, tr: radius, bl: 0, br: 0 });
+        // A slimy highlight line along the top edge (not for a sliver).
+        if (innerW >= 14) {
+            this.fill.fillStyle(HUD.COLORS.fillShine, 0.35).fillRoundedRect(TRACK_X + 6, BAR_Y + 2, innerW - 12, 4, 2);
+        }
     }
 }
