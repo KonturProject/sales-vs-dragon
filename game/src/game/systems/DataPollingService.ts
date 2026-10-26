@@ -1,6 +1,7 @@
 import { EventBus, GameEvents, MoneyInPayload, ProgressChangedPayload } from '../core/EventBus';
 import { GameState, StatusResponse } from '../core/GameState';
 import { DRAGON, HERO, POLL } from '../core/Constants';
+import { reserveStrike, strikeDurationMs } from './StrikeQueue';
 import { RosterConfig } from './RosterConfig';
 
 interface RuntimeConfig {
@@ -18,6 +19,8 @@ let pollInFlight = false;
 let config: RuntimeConfig | null = null;
 /** Highest admin command id this display has already seen; null until the first poll (the baseline). */
 let lastCommandId: number | null = null;
+/** The backend's `importedAt` seen by the previous poll (null before the first one). */
+let lastImportedAt: number | null = null;
 
 async function loadRuntimeConfig(): Promise<RuntimeConfig> {
     const res = await fetch('config.json', { cache: 'no-store' });
@@ -98,26 +101,34 @@ function fetchWithHedge(url: string): Promise<StatusResponse> {
 
 function diffAndEmit(previous: Record<string, number> | null, status: StatusResponse) {
     let hitCount = 0;
+    let hitsFinishAt = 0;
+
+    // A payment file was imported since the last poll: this poll's changes are the import's, and its heroes strike with wider pauses.
+    const importedAt = status.importedAt ?? 0;
+    const isImport = previous !== null && lastImportedAt !== null && importedAt > lastImportedAt;
+    lastImportedAt = importedAt;
+    const gapMs = isImport ? HERO.IMPORT_STRIKE_GAP_MS : HERO.STRIKE_GAP_MS;
 
     if (previous !== null) {
-        let staggerIndex = 0;
         for (const row of status.byRop) {
             const before = previous[row.ropName] ?? 0;
             const delta = row.amount - before;
             if (delta > 0) {
                 const heroSlug = RosterConfig.heroSlugForRop(row.ropName);
                 const payload: MoneyInPayload = { heroSlug: heroSlug ?? 'overflow', ropName: row.ropName, delta };
-                const fireAt = staggerIndex * HERO.HIT_STAGGER_MS;
-                staggerIndex++;
+                // One hero at a time: this strike starts when the previous series (this poll's or an earlier one's) is over, plus a pause.
+                // A sale of no mapped department has no hero to run, so it takes no slot.
+                const duration = heroSlug ? strikeDurationMs(delta) : 0;
+                const delay = heroSlug ? reserveStrike(duration, gapMs) : 0;
                 hitCount++;
-                setTimeout(() => EventBus.emit(GameEvents.MONEY_IN, payload), fireAt);
+                hitsFinishAt = Math.max(hitsFinishAt, delay + (heroSlug ? duration : HERO.IMPACT_MS));
+                setTimeout(() => EventBus.emit(GameEvents.MONEY_IN, payload), delay);
             }
         }
     }
 
-    // Head loss / victory should only play once every staggered hit from this
+    // Head loss / victory should only play once every queued hit from this
     // poll has had time to land — otherwise it steals attention from the blow.
-    const hitsFinishAt = hitCount > 0 ? (hitCount - 1) * HERO.HIT_STAGGER_MS + HERO.HIT_DURATION_MS : 0;
     const settleDelayMs = hitCount > 0 ? hitsFinishAt + HEAD_LOSS_LEAD_MS : 0;
 
     const isBaseline = previous === null;

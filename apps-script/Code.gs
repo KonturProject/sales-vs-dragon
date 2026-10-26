@@ -9,7 +9,8 @@
  *   "Settings" — Key | Value                   (rows: WeeklyPlan, TotalMeters)
  *
  * HTTP API (one Web App URL):
- *   GET            public, aggregates only: week status + recent admin "commands" for the displays.
+ *   GET            public, aggregates only: week status + recent admin "commands" for the displays, plus `lastSale`
+ *                  ({rop, amount, date} of the newest payment — nothing else of it) and `importedAt` (ms of the last file import).
  *   POST (JSON, sent as text/plain to avoid a CORS preflight) — every action needs the admin PIN:
  *     { action: 'login',     pin }                                  check the PIN
  *     { action: 'setPlan',   pin, plan }                            weekly plan (also the legacy { pin, plan } form)
@@ -37,6 +38,8 @@ var PIN_PROPERTY_KEY = 'ADMIN_PIN';
 /** 'salt$sha256hex' of the PIN, written by storePin_(). Takes precedence over the legacy property. */
 var PIN_HASH_PROPERTY_KEY = 'ADMIN_PIN_HASH';
 var COMMANDS_PROPERTY_KEY = 'COMMANDS';
+/** ms timestamp of the last successful replaceSales (a file import); the displays space the heroes' strikes wider after it. */
+var IMPORTED_AT_PROPERTY_KEY = 'IMPORTED_AT';
 var COMMAND_SEQ_PROPERTY_KEY = 'COMMAND_SEQ';
 
 /** After this many wrong PINs within PIN_FAILURE_WINDOW_SEC the admin API refuses everything for PIN_LOCK_SEC. */
@@ -324,6 +327,7 @@ function actionReplaceSales_(body) {
     }
     for (var m = incoming.length; m < freed.length; m++) writes[freed[m]] = ['', '', ''];
     writeSaleRows_(sheet, cols, writes);
+    PropertiesService.getScriptProperties().setProperty(IMPORTED_AT_PROPERTY_KEY, String(Date.now()));
 
     return { ok: true, removed: freed.length, added: incoming.length, status: computeWeeklyStatus_() };
   });
@@ -513,16 +517,21 @@ function computeWeeklyStatus_() {
 
   var totalsByRop = {};
   var totalThisWeek = 0;
+  var last = null; // the newest payment of the whole table: latest date, the lower row on a tie
 
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
     var rawDate = row[dateCol];
     if (!rawDate) continue;
     var date = rawDate instanceof Date ? rawDate : new Date(rawDate);
-    if (date < bounds.start || date >= bounds.end) continue;
 
     var amount = Number(row[amountCol]) || 0;
     var rop = String(row[ropCol] || '').trim();
+    if (rop && amount > 0 && !isNaN(date.getTime()) && (last === null || date.getTime() >= last.time)) {
+      last = { time: date.getTime(), date: date, amount: amount, rop: rop };
+    }
+
+    if (date < bounds.start || date >= bounds.end) continue;
     if (!rop) continue;
 
     totalsByRop[rop] = (totalsByRop[rop] || 0) + amount;
@@ -541,12 +550,17 @@ function computeWeeklyStatus_() {
     byRop.push({ ropName: ropName, amount: totalsByRop[ropName] });
   }
 
+  // Public, so only what the "show the last strike" button needs: the department, the amount and the day. No names, no clients.
+  var lastSale = last === null ? null : { rop: last.rop, amount: last.amount, date: formatSaleDate_(last.date, tz) };
+
   return {
     ok: true,
     weekStart: Utilities.formatDate(bounds.start, tz, 'yyyy-MM-dd'),
     weekEnd: Utilities.formatDate(bounds.end, tz, 'yyyy-MM-dd'),
     plan: plan,
     avgCheck: avgCheck,
+    lastSale: lastSale,
+    importedAt: Number(PropertiesService.getScriptProperties().getProperty(IMPORTED_AT_PROPERTY_KEY)) || 0,
     totalThisWeek: totalThisWeek,
     totalMeters: totalMeters,
     metersRemaining: metersRemaining,

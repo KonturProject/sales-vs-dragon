@@ -15,6 +15,13 @@ export interface BackendCommand {
     issuedAt: number;
 }
 
+export interface LastSale {
+    rop: string;
+    amount: number;
+    /** 'yyyy-MM-dd' (+ ' HH:mm' when the payment has a time). */
+    date: string;
+}
+
 export interface StatusResponse {
     ok: boolean;
     weekStart: string;
@@ -22,6 +29,10 @@ export interface StatusResponse {
     plan: number;
     /** The month's average check set in the admin (0 / absent = not set): how big a payment is, for the blow series. */
     avgCheck?: number;
+    /** The newest payment in the table (department, amount, day) — what «Показать последний удар» shows. null: the table is empty. */
+    lastSale?: LastSale | null;
+    /** Backend clock (ms) of the last payment-file import; when it moves between two polls, the strikes of that poll are spaced wider. */
+    importedAt?: number;
     totalThisWeek: number;
     totalMeters?: number;
     metersRemaining?: number;
@@ -42,6 +53,8 @@ class GameStateStore {
     plan = 0;
     /** The month's average check from the admin; 0 = not set (blow series then go by HERO.BLOWS.STEP_DELTA). */
     avgCheck = 0;
+    /** The newest payment of the table, from the latest poll (null until the first poll lands, or when the table is empty). */
+    lastSale: LastSale | null = null;
     totalThisWeek = 0;
     byRop: Record<string, number> = {};
     /** true once at least one poll has landed — first poll is a baseline, never diffed */
@@ -68,6 +81,7 @@ class GameStateStore {
         this.byRop = nextByRop;
         this.plan = status.plan;
         this.avgCheck = status.avgCheck ?? 0;
+        this.lastSale = status.lastSale ?? null;
         this.totalThisWeek = status.totalThisWeek;
         this.lastUpdated = status.lastUpdated;
         this.lastFetchOk = true;
@@ -92,6 +106,7 @@ class GameStateStore {
     reset() {
         this.plan = 0;
         this.avgCheck = 0;
+        this.lastSale = null;
         this.totalThisWeek = 0;
         this.byRop = {};
         this.hasBaseline = false;

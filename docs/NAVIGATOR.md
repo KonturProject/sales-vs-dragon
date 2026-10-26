@@ -18,6 +18,7 @@
 | Откуда берутся данные, diff, расчёт «голов» | `game/src/game/systems/DataPollingService.ts`, `core/GameState.ts` |
 | Простой команды (герои падают, вождь рычит сам) | `game/src/game/systems/IdleMood.ts` |
 | Частота кадров / лёгкость для слабых ноутбуков | `core/Quality.ts`, `core/PowerSaver.ts` |
+| Очередь ударов героев, паузы 1,5 с / 3 с при импорте; кнопка «Показать последний удар» | `systems/StrikeQueue.ts`, `DataPollingService.diffAndEmit`, `objects/LastStrikeButton.ts`, `HUDScene.showLastStrike`, `HERO.STRIKE_GAP_MS` / `IMPORT_STRIKE_GAP_MS` |
 | Дыхание персонажей по очереди | `game/src/game/systems/BreathRelay.ts`, `BREATH` в `Constants.ts`, `HeroSprite.breathe`, `Horde.breathers` |
 | Свет костра, палатки, тотемы | `objects/Firelight.ts`, `objects/CampProps.ts`, `HORDE.FIRELIGHT/TENTS/TOTEMS` |
 | Ширина мира / камера сцены | `WORLD` в `Constants.ts`, `core/Render.ts` (`fitCameraToWorld`, `hudToWorld`) |
@@ -102,6 +103,7 @@ Phaser, список сцен Boot→Preloader→PenScene+HUDScene, PowerSaver).
 | `HeroSprite.ts` | герой: `playHit` (рывок→удар→возврат, 4 атаки по кругу), `playCelebrate`, `fallOver`, `doze`, `wakeUp`, редкий наклон | PenScene, IdleMood |
 | `LeadSprite.ts` | Круэлла: `playCheer`, `playVictory`, `resetPose` | PenScene |
 | `Leaderboard.ts` | мини-рейтинг 6 отделов на малой хэллоуинской панели | HUDScene |
+| `LastStrikeButton.ts` | кнопка «Показать последний удар» внизу слева | HUDScene |
 | `Firelight.ts` | тёплое пятно света костра под персонажами, мерцает кадрами костра | Horde |
 | `CampProps.ts` | две палатки и два тотема-ворота (отражены, крупнее ближе к низу) | PenScene |
 
@@ -111,6 +113,7 @@ Phaser, список сцен Boot→Preloader→PenScene+HUDScene, PowerSaver).
 | `DataPollingService.ts` | опрос бэкенда (hedge, таймауты), diff → `MONEY_IN`, `DRAGON_HEAD_LOST/DEFEATED`, `ADMIN_COMMAND`; baseline | PenScene, main |
 | `IdleMood.ts` | простой: герои падают/засыпают через час без продаж; вождь рычит по расписанию | PenScene |
 | `RosterConfig.ts` | код отдела → герой, `heroDef()` над `config/*.json` | HeroSprite, Leaderboard, HUDScene, PenScene, Preloader, DataPollingService |
+| `StrikeQueue.ts` | общая очередь ударов героев: `reserveStrike`, `emitQueuedStrike`, `strikeDurationMs` | DataPollingService, PenScene, HUDScene |
 | `BreathRelay.ts` | «дыхание по очереди»: `Breather`-интерфейс, 2 дорожки, только таймеры | PenScene |
 | `Audio.ts` | процедурный звук, mute в localStorage | HeroSprite, Horde, HUDScene, PenScene, main |
 | `Fx.ts` | `emitBurst/Sparkles/ConfettiBurst/ShockwaveRing/ComicText/FloatingAmount/CoinBurst`, `flashScreen`, `addIdleFlicker` | HeroSprite, Horde, LeadSprite, HUDScene, PenScene |

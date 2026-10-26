@@ -12,6 +12,7 @@ import { CampProps } from '../objects/CampProps';
 import { HeroSprite } from '../objects/HeroSprite';
 import { LeadSprite } from '../objects/LeadSprite';
 import { IdleMood } from '../systems/IdleMood';
+import { emitQueuedStrike } from '../systems/StrikeQueue';
 import { emitFloatingAmount } from '../systems/Fx';
 import { BreathRelay } from '../systems/BreathRelay';
 import { AudioSystem } from '../systems/Audio';
@@ -129,9 +130,10 @@ export class PenScene extends Scene {
             case 'hit': {
                 const rop = String(cmd.args.rop ?? '');
                 const delta = Number(cmd.args.amount) || 50000;
-                EventBus.emit(GameEvents.MONEY_IN, {
+                // Behind the strikes already planned (several hit buttons pressed at once strike one after another).
+                emitQueuedStrike(this, {
                     heroSlug: RosterConfig.heroSlugForRop(rop) ?? 'overflow', ropName: rop, delta, demo: true,
-                } satisfies MoneyInPayload);
+                });
                 break;
             }
             case 'fall':

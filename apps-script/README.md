@@ -40,8 +40,13 @@ Standalone-проект (не привязан к таблице через Exte
 
 ```bash
 cd game
-npm run test:backend      # 33 теста: PIN, блокировка, addSale, listSales, changePin, команды
+npm run test:backend      # 37 тестов: PIN, блокировка, addSale, listSales, changePin, команды
 npm run mock-backend      # тот же Code.gs по http://localhost:8787/exec (PIN 1234, данные в памяти)
 ```
 
 Для dev-сборки игры и админки адрес подменяется параметром `?backend=http://localhost:8787/exec`.
+
+
+## Публичный GET: поля для монитора
+
+`lastSale` — `{rop, amount, date}` самой свежей оплаты листа «Sales» (последняя дата, при равных — нижняя строка; только отдел, сумма и день, без клиента и имён) для кнопки «Показать последний удар»; `null`, если лист пуст. `importedAt` — время (мс) последней загрузки оплат файлом (`replaceSales`), `0`, если загрузок не было; по нему монитор ставит паузу 3 с между ударами героев.

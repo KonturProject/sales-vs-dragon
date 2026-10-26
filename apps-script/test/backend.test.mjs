@@ -405,3 +405,55 @@ test('deleteSale repeated with the same requestId answers the same and deletes o
     assert.equal(b.post(body).ok, true, 'the retry gets the first answer, not row_changed');
     assert.equal(saleRows(b).length, 2);
 });
+
+/* ------------------------------------------------- lastSale and importedAt in the public status */
+
+test('the public status carries the newest payment (latest date, the lower row on a tie) as department, amount and date only', () => {
+    const b = loadBackend(); // rows: 09-21 СР1 400k (row 2), 09-22 СР2 250k (row 3), 09-23 09:00 СР1 120k (row 4)
+    const last = b.get().lastSale;
+    assert.deepEqual(Object.keys(last).sort(), ['amount', 'date', 'rop']);
+    assert.equal(last.rop, 'СР1');
+    assert.equal(last.amount, 120000);
+    assert.match(last.date, /^2026-09-23/);
+
+    // a payment of an older day added last (a bigger row number) is not "the last"
+    b.post({ action: 'addSale', pin: PIN, rop: 'СР9', amount: 5000, date: '2026-09-20' });
+    assert.equal(b.get().lastSale.rop, 'СР1');
+    // the same day, lower in the sheet, wins the tie
+    b.post({ action: 'addSale', pin: PIN, rop: 'СР6', amount: 7000, date: '2026-09-23T09:00' });
+    assert.equal(b.get().lastSale.rop, 'СР6');
+});
+
+test('lastSale looks at the whole table, not only this week, and is null for an empty one', () => {
+    const b = loadBackend();
+    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-21', to: '2026-09-23', rows: [{ date: '2026-08-03', amount: 1000, rop: 'СР5' }].map(r => ({ ...r, date: '2026-09-21' })) });
+    // move the clock a month on: the payment is no longer in the current week, but it is still the last record
+    b.advance(30 * 86400000);
+    assert.equal(b.get().totalThisWeek, 0);
+    assert.equal(b.get().lastSale.rop, 'СР5');
+    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-21', to: '2026-09-23', rows: [] });
+    assert.equal(b.get().lastSale, null);
+});
+
+test('importedAt changes only with an import (replaceSales), not with addSale or deleteSale', () => {
+    const b = loadBackend();
+    assert.equal(b.get().importedAt, 0);
+    b.post({ action: 'addSale', pin: PIN, rop: 'СР2', amount: 1000 });
+    assert.equal(b.get().importedAt, 0);
+    b.advance(5000);
+    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23', rows: [{ date: '2026-09-22', amount: 1, rop: 'СР1' }] });
+    const first = b.get().importedAt;
+    assert.equal(first, b.now(), 'the backend clock at the import');
+    b.advance(5000);
+    const date = b.post({ action: 'listSales', pin: PIN }).sales[0];
+    b.post({ action: 'deleteSale', pin: PIN, row: date.row, date: date.date, amount: date.amount, rop: date.rop });
+    assert.equal(b.get().importedAt, first);
+    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23', rows: [] });
+    assert.ok(b.get().importedAt > first);
+});
+
+test('a refused import does not move importedAt', () => {
+    const b = loadBackend();
+    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-24', to: '2026-09-23', rows: [] });
+    assert.equal(b.get().importedAt, 0);
+});

@@ -7,6 +7,8 @@ import { emitConfettiBurst, flashScreen } from '../systems/Fx';
 import { RosterConfig } from '../systems/RosterConfig';
 import { Leaderboard } from '../objects/Leaderboard';
 import { AudioSystem } from '../systems/Audio';
+import { LastStrikeButton } from '../objects/LastStrikeButton';
+import { emitQueuedStrike } from '../systems/StrikeQueue';
 
 const BAR_X = HUD.BAR_X;
 const BAR_Y = HUD.BAR_Y;
@@ -34,6 +36,7 @@ export class HUDScene extends Scene {
     private statusDot!: GameObjects.Arc;
     private statusText!: GameObjects.Text;
     private muteIcon!: GameObjects.Graphics;
+    private lastStrikeButton!: LastStrikeButton;
     private leaderboard!: Leaderboard;
     private displayedRatio = 0;
     private displayedTotal = 0;
@@ -94,6 +97,10 @@ export class HUDScene extends Scene {
             this.renderMuteIcon();
         });
 
+        // «Показать последний удар»: the head of the group replays the newest payment of the table for the people in the room.
+        this.lastStrikeButton = new LastStrikeButton(this, MUTE_X + 24, MUTE_Y, () => this.showLastStrike());
+        this.lastStrikeButton.setAvailable(GameState.lastSale !== null);
+
         this.leaderboard = new Leaderboard(this, HUD.PANEL.X, HUD.PANEL.Y);
         this.leaderboard.update(GameState.byRop);
 
@@ -105,6 +112,7 @@ export class HUDScene extends Scene {
             this.lastGoodAt = Date.now();
             this.renderStatus();
             this.leaderboard.update(GameState.byRop);
+            this.lastStrikeButton.setAvailable(GameState.lastSale !== null);
         };
         EventBus.on(GameEvents.DATA_UPDATED, onDataUpdated);
 
@@ -178,6 +186,18 @@ export class HUDScene extends Scene {
             EventBus.off(GameEvents.MONEY_IN, onMoneyIn);
             EventBus.off(GameEvents.DRAGON_HEAD_LOST, onHeadLost);
             statusTimer.remove();
+        });
+    }
+
+    /**
+     * Shows the newest payment of the table again: the hero of its department strikes as for a real sale (but flagged `demo`:
+     * no idle-timer reset, no totals), queued behind the strikes already planned. Returns how long the hero is busy, ms.
+     */
+    private showLastStrike(): number | null {
+        const sale = GameState.lastSale;
+        if (!sale) return null;
+        return emitQueuedStrike(this, {
+            heroSlug: RosterConfig.heroSlugForRop(sale.rop) ?? 'overflow', ropName: sale.rop, delta: sale.amount, demo: true,
         });
     }
 

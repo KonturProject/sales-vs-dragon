@@ -147,6 +147,11 @@ export function blowsFor(delta: number, avgCheck = 0): number {
 /** The dark ovals on the ground under every character (systems/GroundShadow.ts). Ground only — the characters carry no shadow/glow. */
 export const GROUND_SHADOW = { ALPHA: 0.55, FLATNESS: 0.24, HERO_WIDTH: 0.72, GOBLIN_WIDTH: 0.55, CHIEF_WIDTH: 0.5 } as const;
 
+/** How long a hero is busy with a sale of `blows` blows: from the event to standing back at the slot. */
+export function hitDurationMs(blows: number): number {
+    return HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS + (blows - 1) * BLOWS.GAP_MS + HIT_PHASES.RECOIL_MS + HIT_PHASES.RETURN_MS;
+}
+
 export const HERO = {
     /**
      * Where each department hero stands (feet), in roster order left -> right.
@@ -165,11 +170,16 @@ export const HERO = {
     ],
     /** All hero textures are 2x their on-screen size (see tools/build-sprites.py). */
     TEXTURE_SCALE: 0.5,
-    HIT_STAGGER_MS: 300,
+    /**
+     * Heroes strike one after another (systems/StrikeQueue.ts): the next series starts this long after the previous hero is back
+     * in place — 1.5 s normally, 3 s while a payment file is being imported (the backend's `importedAt` moved).
+     */
+    STRIKE_GAP_MS: 1500,
+    IMPORT_STRIKE_GAP_MS: 3000,
     ...HIT_PHASES,
     /** From the sale event to the blow landing on the dragon — hit effects, sound and the dragon's reaction key off this. */
     IMPACT_MS: HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS,
-    /** Whole playHit chain, event to the hero standing back at its slot. */
+    /** The longest playHit chain (a full series of BLOWS.MAX), event to the hero standing back at its slot. */
     HIT_DURATION_MS: HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS + (BLOWS.MAX - 1) * BLOWS.GAP_MS + HIT_PHASES.RECOIL_MS + HIT_PHASES.RETURN_MS,
     BLOWS,
     /**
