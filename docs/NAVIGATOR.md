@@ -18,7 +18,7 @@
 | Откуда берутся данные, diff, расчёт «голов» | `game/src/game/systems/DataPollingService.ts`, `core/GameState.ts` |
 | Простой команды (герои падают, вождь рычит сам) | `game/src/game/systems/IdleMood.ts` |
 | Частота кадров / лёгкость для слабых ноутбуков | `core/Quality.ts`, `core/PowerSaver.ts` |
-| Очередь ударов героев, паузы 1,5 с / 3 с при импорте; кнопка «Показать последний удар» | `systems/StrikeQueue.ts`, `DataPollingService.diffAndEmit`, `objects/LastStrikeButton.ts`, `HUDScene.showLastStrike`, `HERO.STRIKE_GAP_MS` / `IMPORT_STRIKE_GAP_MS` |
+| Очередь ударов героев, пауза 1,5 с; кнопка «Показать последний удар» | `systems/StrikeQueue.ts`, `DataPollingService.diffAndEmit`, `objects/LastStrikeButton.ts`, `HUDScene.showLastStrike`, `HERO.STRIKE_GAP_MS` |
 | Дыхание персонажей по очереди | `game/src/game/systems/BreathRelay.ts`, `BREATH` в `Constants.ts`, `HeroSprite.breathe`, `Horde.breathers` |
 | Свет костра, палатки, тотемы | `objects/Firelight.ts`, `objects/CampProps.ts`, `HORDE.FIRELIGHT/TENTS/TOTEMS` |
 | Ширина мира / камера сцены | `WORLD` в `Constants.ts`, `core/Render.ts` (`fitCameraToWorld`, `hudToWorld`) |

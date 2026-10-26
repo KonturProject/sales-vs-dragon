@@ -19,8 +19,6 @@ let pollInFlight = false;
 let config: RuntimeConfig | null = null;
 /** Highest admin command id this display has already seen; null until the first poll (the baseline). */
 let lastCommandId: number | null = null;
-/** The backend's `importedAt` seen by the previous poll (null before the first one). */
-let lastImportedAt: number | null = null;
 
 async function loadRuntimeConfig(): Promise<RuntimeConfig> {
     const res = await fetch('config.json', { cache: 'no-store' });
@@ -103,12 +101,6 @@ function diffAndEmit(previous: Record<string, number> | null, status: StatusResp
     let hitCount = 0;
     let hitsFinishAt = 0;
 
-    // A payment file was imported since the last poll: this poll's changes are the import's, and its heroes strike with wider pauses.
-    const importedAt = status.importedAt ?? 0;
-    const isImport = previous !== null && lastImportedAt !== null && importedAt > lastImportedAt;
-    lastImportedAt = importedAt;
-    const gapMs = isImport ? HERO.IMPORT_STRIKE_GAP_MS : HERO.STRIKE_GAP_MS;
-
     if (previous !== null) {
         for (const row of status.byRop) {
             const before = previous[row.ropName] ?? 0;
@@ -119,7 +111,7 @@ function diffAndEmit(previous: Record<string, number> | null, status: StatusResp
                 // One hero at a time: this strike starts when the previous series (this poll's or an earlier one's) is over, plus a pause.
                 // A sale of no mapped department has no hero to run, so it takes no slot.
                 const duration = heroSlug ? strikeDurationMs(delta) : 0;
-                const delay = heroSlug ? reserveStrike(duration, gapMs) : 0;
+                const delay = heroSlug ? reserveStrike(duration) : 0;
                 hitCount++;
                 hitsFinishAt = Math.max(hitsFinishAt, delay + (heroSlug ? duration : HERO.IMPACT_MS));
                 setTimeout(() => EventBus.emit(GameEvents.MONEY_IN, payload), delay);

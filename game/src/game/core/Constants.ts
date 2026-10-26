@@ -172,10 +172,10 @@ export const HERO = {
     TEXTURE_SCALE: 0.5,
     /**
      * Heroes strike one after another (systems/StrikeQueue.ts): the next series starts this long after the previous hero is back
-     * in place — 1.5 s normally, 3 s while a payment file is being imported (the backend's `importedAt` moved).
+     * in place — the same for live sales, a file import, the admin's buttons and the «Показать последний удар» button
+     * (3 s read as a lag, so there is no longer pause for imports).
      */
     STRIKE_GAP_MS: 1500,
-    IMPORT_STRIKE_GAP_MS: 3000,
     ...HIT_PHASES,
     /** From the sale event to the blow landing on the dragon — hit effects, sound and the dragon's reaction key off this. */
     IMPACT_MS: HIT_PHASES.WINDUP_MS + HIT_PHASES.RUN_MS,

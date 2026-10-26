@@ -31,8 +31,6 @@ export interface StatusResponse {
     avgCheck?: number;
     /** The newest payment in the table (department, amount, day) — what «Показать последний удар» shows. null: the table is empty. */
     lastSale?: LastSale | null;
-    /** Backend clock (ms) of the last payment-file import; when it moves between two polls, the strikes of that poll are spaced wider. */
-    importedAt?: number;
     totalThisWeek: number;
     totalMeters?: number;
     metersRemaining?: number;

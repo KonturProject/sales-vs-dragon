@@ -406,7 +406,7 @@ test('deleteSale repeated with the same requestId answers the same and deletes o
     assert.equal(saleRows(b).length, 2);
 });
 
-/* ------------------------------------------------- lastSale and importedAt in the public status */
+/* ------------------------------------------------- lastSale in the public status */
 
 test('the public status carries the newest payment (latest date, the lower row on a tie) as department, amount and date only', () => {
     const b = loadBackend(); // rows: 09-21 СР1 400k (row 2), 09-22 СР2 250k (row 3), 09-23 09:00 СР1 120k (row 4)
@@ -433,27 +433,4 @@ test('lastSale looks at the whole table, not only this week, and is null for an 
     assert.equal(b.get().lastSale.rop, 'СР5');
     b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-21', to: '2026-09-23', rows: [] });
     assert.equal(b.get().lastSale, null);
-});
-
-test('importedAt changes only with an import (replaceSales), not with addSale or deleteSale', () => {
-    const b = loadBackend();
-    assert.equal(b.get().importedAt, 0);
-    b.post({ action: 'addSale', pin: PIN, rop: 'СР2', amount: 1000 });
-    assert.equal(b.get().importedAt, 0);
-    b.advance(5000);
-    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23', rows: [{ date: '2026-09-22', amount: 1, rop: 'СР1' }] });
-    const first = b.get().importedAt;
-    assert.equal(first, b.now(), 'the backend clock at the import');
-    b.advance(5000);
-    const date = b.post({ action: 'listSales', pin: PIN }).sales[0];
-    b.post({ action: 'deleteSale', pin: PIN, row: date.row, date: date.date, amount: date.amount, rop: date.rop });
-    assert.equal(b.get().importedAt, first);
-    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-22', to: '2026-09-23', rows: [] });
-    assert.ok(b.get().importedAt > first);
-});
-
-test('a refused import does not move importedAt', () => {
-    const b = loadBackend();
-    b.post({ action: 'replaceSales', pin: PIN, from: '2026-09-24', to: '2026-09-23', rows: [] });
-    assert.equal(b.get().importedAt, 0);
 });
